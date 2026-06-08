@@ -2019,19 +2019,25 @@
           <div class="sub-price">$10</div>
           <div class="sub-period">per month · cancel anytime</div>
           <ul class="feature-list">
-            <li>Fully personalized 3-day/week workout program</li>
-            <li>Periodized training: Hypertrophy → Strength → Maximal Assessment → Power</li>
-            <li>Competition periodization tied to your yearly calendar</li>
-            <li>Equipment-adaptive exercise substitutions</li>
-            <li>1-rep max estimator with percentage-based programming</li>
-            <li>Personalized daily macros via Harris-Benedict formula</li>
-            <li>AI-generated meal plans matched to your exact macros</li>
-            <li>Pantry-based meal suggestions with allergy filtering</li>
-            <li>AI Coach — personal trainer available 24/7</li>
-            <li>Plyometrics & speed/agility add-ons</li>
-            <li>How-To technique videos for every exercise</li>
-            <li>Update your profile anytime — program adapts instantly</li>
-            <li>Cloud backup & cross-device sync (with account)</li>
+            <li>11 training styles: Strength &amp; Conditioning, Bodybuilding, CrossFit, Powerlifting, Olympic Weightlifting, Calisthenics, Yoga, HIIT, LISS Cardio, Prenatal &amp; Postnatal</li>
+            <li>Fully personalized program with adjustable training days per week</li>
+            <li>Editable program — swap any exercise or equipment, applied everywhere instantly</li>
+            <li>Each training style saved separately — switch freely without losing your edits</li>
+            <li>Periodized training with phase tracking (Hypertrophy → Strength → Power → Endurance)</li>
+            <li>Equipment tab — set what you own and exercises auto-adapt to it</li>
+            <li>Smart substitutions keep your movement when equipment changes</li>
+            <li>1-rep max tracker tailored to the lifts your style actually programs</li>
+            <li>Percentage-based loading you can toggle on or off</li>
+            <li>Full recovery suite: guided sessions, mobility assessment &amp; daily mobility</li>
+            <li>Recovery adapts to your tight areas and recently trained muscles</li>
+            <li>Personalized daily macros with meal timing around your workouts</li>
+            <li>Recipe library, pantry suggestions &amp; allergy filtering</li>
+            <li>AI Coach — available 24/7 from every screen</li>
+            <li>Plyometrics &amp; speed/agility add-ons</li>
+            <li>Equipment-specific How-To videos that update when you swap</li>
+            <li>Optional cardio finishers for fat-loss goals</li>
+            <li>Update your profile anytime — your program adapts instantly</li>
+            <li>Cloud backup &amp; cross-device sync (with account)</li>
           </ul>
           <button class="btn" style="width:100%;margin-bottom:0.75rem" onclick="handleSubscribe()">Subscribe Now — $10/mo</button>
           <div style="text-align:center;font-size:0.75rem;color:var(--muted)">Secure payment via Stripe · Cancel anytime · No hidden fees</div>
@@ -3857,8 +3863,18 @@ function launchApp() {
   const splash = document.getElementById('splash');
   const app = document.getElementById('app');
 
-  // Hide splash, show app
+  // Hide splash
   if (splash) splash.style.display = 'none';
+
+  // Brand-new user with no saved data → run the intro instead of the app
+  try {
+    if (typeof shouldShowOnboarding === 'function' && shouldShowOnboarding()) {
+      if (app) app.style.display = 'none';
+      startOnboarding();
+      return;
+    }
+  } catch (e) {}
+
   if (app) app.style.display = 'block';
 
   // Run all init functions defensively

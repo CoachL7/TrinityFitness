@@ -2106,7 +2106,7 @@ let selectedGoal = profile.goal || 'maintain';
 let selectedBodyType = profile.bodyType || 'ecto';
 let selectedTrainingMode = profile.trainingMode || 'strength';
 let selectedTrainingStyles = profile.trainingStyles || [];
-let selectedEquipment = new Set(profile.equipment || ['Barbell (BB)','Dumbbell (DB)','Cable Machine','Pull-up Bar','Bench']);
+let selectedEquipment = new Set(profile.equipment || ['Barbell (BB)','Dumbbell (DB)','Kettlebell (KB)','Cable Machine','Pull-up Bar','Bench']);
 let selectedActivityGoals = new Set(profile.activityGoals || []);
 
 // ==============================
@@ -2114,7 +2114,7 @@ let selectedActivityGoals = new Set(profile.activityGoals || []);
 // ==============================
 const TRAINING_STYLES = [
   'General Strength & Conditioning','Bodybuilding','CrossFit',
-  'Fitness Modeling','Athletic Performance','HIIT',
+  'Fitness Modeling','Athletic Performance','HIIT','LISS Cardio',
   'Bodyweight Calisthenics','Olympic Weightlifting','Powerlifting',
   'Yoga','Pilates',
   'Prenatal (Pre-Partum)','Postnatal (Post-Partum)'
@@ -2189,6 +2189,25 @@ const EQUIPMENT_CATEGORIES = [
           {name:'Parachute', icon:'<svg viewBox="0 0 28 28" width="22" height="22"><path d="M4 14 Q4 2 14 2 Q24 2 24 14" fill="none" stroke="currentColor" stroke-width="2.5"/><line x1="7" y1="13" x2="14" y2="22" stroke="currentColor" stroke-width="2"/><line x1="14" y1="8" x2="14" y2="22" stroke="currentColor" stroke-width="2"/><line x1="21" y1="13" x2="14" y2="22" stroke="currentColor" stroke-width="2"/><circle cx="14" cy="23" r="2" fill="currentColor"/></svg>'},
           {name:'Bungee / Speed Cord', icon:'<svg viewBox="0 0 36 14" width="28" height="10"><path d="M2 7 Q6 2 10 7 Q14 12 18 7 Q22 2 26 7 Q30 12 34 7" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>'},
           {name:'PVC Pipe', icon:'<svg viewBox="0 0 40 12" width="32" height="10"><rect x="1" y="3" width="38" height="6" rx="3" fill="none" stroke="currentColor" stroke-width="2"/></svg>'},
+        ]
+      },
+      {
+        group: 'CrossFit & Functional',
+        items: [
+          {name:'Pull-up Rig', icon:'<svg viewBox="0 0 36 32" width="28" height="24"><rect x="3" y="2" width="3" height="28" rx="1" fill="currentColor"/><rect x="30" y="2" width="3" height="28" rx="1" fill="currentColor"/><rect x="3" y="4" width="30" height="3" rx="1" fill="currentColor"/><rect x="3" y="13" width="30" height="3" rx="1" fill="currentColor" opacity="0.6"/></svg>'},
+          {name:'Gymnastic Rings', icon:'<svg viewBox="0 0 28 32" width="22" height="26"><line x1="9" y1="1" x2="9" y2="14" stroke="currentColor" stroke-width="2"/><line x1="19" y1="1" x2="19" y2="14" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="20" r="6" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="19" cy="20" r="6" fill="none" stroke="currentColor" stroke-width="3"/></svg>'},
+          {name:'Wall Ball', icon:'<svg viewBox="0 0 26 26" width="20" height="20"><circle cx="13" cy="13" r="11" fill="currentColor" opacity="0.7"/><path d="M3 11 Q13 5 23 11" fill="none" stroke="white" stroke-width="1.5" opacity="0.4"/><path d="M3 15 Q13 21 23 15" fill="none" stroke="white" stroke-width="1.5" opacity="0.4"/></svg>'},
+          {name:'Slam Ball', icon:'<svg viewBox="0 0 26 26" width="20" height="20"><circle cx="13" cy="13" r="11" fill="currentColor" opacity="0.85"/><circle cx="13" cy="13" r="6" fill="none" stroke="white" stroke-width="1.2" opacity="0.4"/><circle cx="13" cy="13" r="2" fill="white" opacity="0.5"/></svg>'},
+          {name:'Climbing Rope', icon:'<svg viewBox="0 0 16 36" width="12" height="28"><path d="M8 1 Q4 6 8 11 Q12 16 8 21 Q4 26 8 31 Q10 33 8 35" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>'},
+          {name:'Bumper Plates', icon:'<svg viewBox="0 0 28 28" width="22" height="22"><circle cx="14" cy="14" r="12" fill="currentColor" opacity="0.7"/><circle cx="14" cy="14" r="4" fill="none" stroke="white" stroke-width="2" opacity="0.6"/></svg>'},
+          {name:'Jump Rope (Speed)', icon:'<svg viewBox="0 0 36 28" width="28" height="22"><path d="M2 8 Q10 18 18 18 Q26 18 34 8" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><rect x="0" y="4" width="4" height="10" rx="2" fill="currentColor"/><rect x="32" y="4" width="4" height="10" rx="2" fill="currentColor"/></svg>'},
+          {name:'Battle Ropes', icon:'<svg viewBox="0 0 36 20" width="28" height="16"><path d="M2 6 Q8 2 14 6 Q20 10 26 6 Q30 3 34 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M2 14 Q8 10 14 14 Q20 18 26 14 Q30 11 34 14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity="0.6"/></svg>'},
+          {name:'Sandbag', icon:'<svg viewBox="0 0 28 28" width="22" height="22"><rect x="4" y="6" width="20" height="18" rx="4" fill="currentColor" opacity="0.75"/><line x1="4" y1="11" x2="24" y2="11" stroke="white" stroke-width="1.2" opacity="0.4"/><rect x="10" y="2" width="8" height="5" rx="2" fill="currentColor"/></svg>'},
+          {name:'Wreck Bag / Sandbell', icon:'<svg viewBox="0 0 28 24" width="22" height="18"><ellipse cx="14" cy="14" rx="12" ry="8" fill="currentColor" opacity="0.75"/><path d="M4 12 Q14 8 24 12" fill="none" stroke="white" stroke-width="1.2" opacity="0.4"/></svg>'},
+          {name:'Yoke', icon:'<svg viewBox="0 0 32 32" width="26" height="26"><rect x="4" y="2" width="24" height="4" rx="1" fill="currentColor"/><rect x="5" y="2" width="3" height="28" rx="1" fill="currentColor"/><rect x="24" y="2" width="3" height="28" rx="1" fill="currentColor"/><rect x="2" y="28" width="28" height="3" rx="1" fill="currentColor" opacity="0.5"/></svg>'},
+          {name:'Axle / Fat Bar', icon:'<svg viewBox="0 0 48 16" width="32" height="12"><rect x="0" y="4" width="6" height="8" rx="1" fill="currentColor"/><rect x="6" y="3" width="4" height="10" rx="1" fill="currentColor"/><rect x="10" y="5" width="28" height="6" rx="3" fill="currentColor"/><rect x="38" y="3" width="4" height="10" rx="1" fill="currentColor"/><rect x="42" y="4" width="6" height="8" rx="1" fill="currentColor"/></svg>'},
+          {name:'Plyo Box (3-in-1)', icon:'<svg viewBox="0 0 32 28" width="26" height="22"><rect x="2" y="10" width="28" height="16" rx="2" fill="currentColor" opacity="0.6"/><rect x="2" y="10" width="28" height="5" rx="2" fill="currentColor"/></svg>'},
+          {name:'GHD Machine', icon:'<svg viewBox="0 0 40 30" width="30" height="22"><rect x="1" y="20" width="38" height="8" rx="2" fill="currentColor" opacity="0.4"/><rect x="2" y="10" width="8" height="18" rx="2" fill="currentColor" opacity="0.7"/><path d="M10 16 L30 8 L38 16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>'},
         ]
       },
     ]
@@ -2559,6 +2578,97 @@ const STYLE_PROGRAMS = {
       {head:'Twist', exercise:'Supine Spinal Twist', equipment:'Bodyweight', note:'hold 8 breaths each side'},
       {head:'Hips', exercise:'Reclined Bound Angle', equipment:'Bodyweight', note:'hold 10 breaths'},
       {head:'Cooldown', exercise:'Savasana', equipment:'Bodyweight', note:'5–10 min'},
+    ]},
+  ],
+  hiit: [
+    { id:'hi1', num:1, label:'FULL-BODY HIIT', type:'CONDITIONING', warmup:_wu('Easy bike'), sections:[
+      {head:'Interval', exercise:'Burpee', equipment:'Bodyweight', note:'8 rounds · 20s work / 10s rest (Tabata)'},
+      {head:'Interval', exercise:'Kettlebell Swing', equipment:'KB', note:'8 rounds · 20s work / 10s rest'},
+      {head:'Interval', exercise:'Mountain Climber', equipment:'Bodyweight', note:'8 rounds · 20s work / 10s rest'},
+      {head:'Interval', exercise:'Jump Squat', equipment:'Bodyweight', note:'8 rounds · 20s work / 10s rest'},
+      {head:'Conditioning', exercise:'Assault Bike Sprint', equipment:'Assault Bike', note:'5 rounds · 15s all-out / 45s easy'},
+    ]},
+    { id:'hi2', num:2, label:'SPRINT INTERVALS', type:'CONDITIONING', warmup:_wu('Easy jog'), sections:[
+      {head:'Sprint', exercise:'Run Sprint', equipment:'Bodyweight', note:'10 rounds · 30s hard / 90s walk'},
+      {head:'Conditioning', exercise:'Rowing Intervals', equipment:'Rower', note:'6 rounds · 250m hard / 1 min easy'},
+      {head:'Core', exercise:'Hollow Rock', equipment:'Bodyweight', note:'3 sets · 30s'},
+    ]},
+    { id:'hi3', num:3, label:'EMOM CONDITIONING', type:'CONDITIONING', warmup:_wu('Easy row'), sections:[
+      {head:'Conditioning', exercise:'Wall Ball', equipment:'Wall Ball', note:'EMOM 12 · 15 reps'},
+      {head:'Conditioning', exercise:'Box Jump', equipment:'Box', note:'EMOM 12 · 12 reps'},
+      {head:'Conditioning', exercise:'Double-Under', equipment:'Jump Rope', note:'EMOM 12 · 40 reps'},
+      {head:'Core', exercise:'Plank', equipment:'Bodyweight', note:'3 sets · 45s'},
+    ]},
+    { id:'hi4', num:4, label:'METABOLIC CIRCUIT', type:'CONDITIONING', warmup:_wu('Easy bike'), sections:[
+      {head:'Circuit', exercise:'Dumbbell Thruster', equipment:'DB', note:'4 rounds · 12 reps'},
+      {head:'Circuit', exercise:'Renegade Row', equipment:'DB', note:'4 rounds · 10 each side'},
+      {head:'Circuit', exercise:'Battle Rope Slam', equipment:'Battle Ropes', note:'4 rounds · 30s'},
+      {head:'Circuit', exercise:'Burpee Box Jump', equipment:'Box', note:'4 rounds · 10 reps'},
+      {head:'Conditioning', exercise:'Ski Erg Sprint', equipment:'Ski Erg', note:'5 rounds · 20s hard / 40s easy'},
+    ]},
+  ],
+  liss: [
+    { id:'ls1', num:1, label:'STEADY WALK / INCLINE', type:'CARDIO', warmup:_wu('Easy walk'), sections:[
+      {head:'Steady-State', exercise:'Incline Treadmill Walk', equipment:'Machine', note:'40–50 min · Zone 2 (~65% max HR)'},
+      {head:'Mobility', exercise:'Standing Forward Fold', equipment:'Bodyweight', note:'hold 1 min'},
+    ]},
+    { id:'ls2', num:2, label:'STEADY CYCLE', type:'CARDIO', warmup:_wu('Easy spin'), sections:[
+      {head:'Steady-State', exercise:'Stationary Bike', equipment:'Machine', note:'45–60 min · conversational pace'},
+      {head:'Mobility', exercise:'Hip Flexor Stretch', equipment:'Bodyweight', note:'1 min each side'},
+    ]},
+    { id:'ls3', num:3, label:'STEADY ROW', type:'CARDIO', warmup:_wu('Easy row'), sections:[
+      {head:'Steady-State', exercise:'Rowing (Steady)', equipment:'Rower', note:'30–40 min · Zone 2, smooth strokes'},
+      {head:'Mobility', exercise:'Thoracic Opener', equipment:'Bodyweight', note:'2 min'},
+    ]},
+    { id:'ls4', num:4, label:'OUTDOOR / MIXED', type:'CARDIO', warmup:_wu('Easy walk'), sections:[
+      {head:'Steady-State', exercise:'Brisk Walk or Light Jog', equipment:'Bodyweight', note:'45–60 min · Zone 2'},
+      {head:'Cooldown', exercise:'Full-Body Stretch', equipment:'Bodyweight', note:'5–8 min'},
+    ]},
+  ],
+  prenatal: [
+    { id:'pn1', num:1, label:'GENTLE FULL BODY', type:'STRENGTH', warmup:_wu('Light walk'), sections:[
+      {head:'Lower', exercise:'Supported Squat', equipment:'Bodyweight', note:'2–3 sets · 10–12 reps · hold support'},
+      {head:'Push', exercise:'Incline Push-Up', equipment:'Bodyweight', note:'2–3 sets · 8–12 reps'},
+      {head:'Pull', exercise:'Seated Row', equipment:'Band', note:'3 sets · 12–15 reps'},
+      {head:'Glutes', exercise:'Glute Bridge', equipment:'Bodyweight', note:'3 sets · 12–15 reps · avoid late-term supine'},
+      {head:'Core', exercise:'Bird Dog', equipment:'Bodyweight', note:'3 sets · 8 each side'},
+    ]},
+    { id:'pn2', num:2, label:'STRENGTH & STABILITY', type:'STRENGTH', warmup:_wu('Light walk'), sections:[
+      {head:'Lower', exercise:'Sit-to-Stand', equipment:'Bodyweight', note:'3 sets · 10 reps'},
+      {head:'Lower', exercise:'Side-Lying Leg Lift', equipment:'Bodyweight', note:'3 sets · 12 each side'},
+      {head:'Push', exercise:'Shoulder Press', equipment:'DB', note:'3 sets · 10–12 reps · light'},
+      {head:'Pull', exercise:'Band Pull-Apart', equipment:'Band', note:'3 sets · 15 reps'},
+      {head:'Core', exercise:'Standing Pelvic Tilt', equipment:'Bodyweight', note:'3 sets · 10 reps'},
+    ]},
+    { id:'pn3', num:3, label:'MOBILITY & PELVIC FLOOR', type:'MOBILITY', warmup:_wu('Light walk'), sections:[
+      {head:'Pelvic Floor', exercise:'Kegel / Pelvic Floor Engagement', equipment:'Bodyweight', note:'3 sets · 10 holds'},
+      {head:'Mobility', exercise:'Cat-Cow', equipment:'Bodyweight', note:'10 slow rounds'},
+      {head:'Hips', exercise:'Birth Ball Hip Circles', equipment:'Bodyweight', note:'2 min each direction'},
+      {head:'Hips', exercise:'Supported Deep Squat Hold', equipment:'Bodyweight', note:'hold 30–60 sec'},
+      {head:'Cooldown', exercise:'Side-Lying Relaxation', equipment:'Bodyweight', note:'5 min'},
+    ]},
+  ],
+  postnatal: [
+    { id:'po1', num:1, label:'RECONNECT & BREATHE', type:'RECOVERY', warmup:_wu('Light walk'), sections:[
+      {head:'Core', exercise:'Diaphragmatic Breathing', equipment:'Bodyweight', note:'3 sets · 8–10 breaths'},
+      {head:'Pelvic Floor', exercise:'Pelvic Floor Connection', equipment:'Bodyweight', note:'3 sets · 10 gentle holds'},
+      {head:'Core', exercise:'Heel Slide', equipment:'Bodyweight', note:'2 sets · 8 each side'},
+      {head:'Mobility', exercise:'Cat-Cow', equipment:'Bodyweight', note:'8 slow rounds'},
+      {head:'Glutes', exercise:'Glute Bridge', equipment:'Bodyweight', note:'2 sets · 10 reps'},
+    ]},
+    { id:'po2', num:2, label:'REBUILD STRENGTH', type:'STRENGTH', warmup:_wu('Light walk'), sections:[
+      {head:'Lower', exercise:'Bodyweight Squat', equipment:'Bodyweight', note:'3 sets · 10–12 reps'},
+      {head:'Push', exercise:'Incline Push-Up', equipment:'Bodyweight', note:'3 sets · 8–10 reps'},
+      {head:'Pull', exercise:'Band Row', equipment:'Band', note:'3 sets · 12–15 reps'},
+      {head:'Core', exercise:'Dead Bug', equipment:'Bodyweight', note:'3 sets · 8 each side · avoid doming'},
+      {head:'Glutes', exercise:'Hip Thrust', equipment:'Bodyweight', note:'3 sets · 12 reps'},
+    ]},
+    { id:'po3', num:3, label:'CORE & FULL BODY', type:'STRENGTH', warmup:_wu('Light walk'), sections:[
+      {head:'Lower', exercise:'Goblet Squat', equipment:'DB', note:'3 sets · 10 reps · light'},
+      {head:'Push', exercise:'DB Shoulder Press', equipment:'DB', note:'3 sets · 10 reps'},
+      {head:'Pull', exercise:'Single-Arm Row', equipment:'DB', note:'3 sets · 10 each side'},
+      {head:'Core', exercise:'Side Plank (knees)', equipment:'Bodyweight', note:'3 sets · 20–30 sec each'},
+      {head:'Mobility', exercise:'Thoracic Opener', equipment:'Bodyweight', note:'2 min'},
     ]},
   ],
 };
@@ -3161,7 +3271,7 @@ const WORKOUT_STRUCTURE = [
       },
       {
         "head": "MB",
-        "exercise": "UH Backward",
+        "exercise": "Underhand Backward",
         "equipment": "MB",
         "note": ""
       },
@@ -3810,15 +3920,25 @@ else document.addEventListener('DOMContentLoaded', () => applyTheme(currentTheme
 // It returns the user's edited/custom program if present, else the built-in one.
 // Training style + workouts-per-week live here too.
 const PROGRAM_STYLES = {
-  general:      { label: 'General Strength', defaultPerWeek: 3, desc: 'The foundational 3-day strength program with athletic add-ons.' },
+  general:      { label: 'Strength & Conditioning', defaultPerWeek: 3, desc: 'The foundational 3-day strength program with athletic add-ons.' },
   bodybuilding: { label: 'Bodybuilding',     defaultPerWeek: 5, desc: 'Higher-volume, muscle-group splits for maximum hypertrophy.' },
   crossfit:     { label: 'CrossFit', defaultPerWeek: 5, desc: 'Mixed-modal strength + conditioning, varied daily.' },
   powerlifting: { label: 'Powerlifting',     defaultPerWeek: 4, desc: 'Squat / bench / deadlift focus with heavy accessory work.' },
   weightlifting:{ label: 'Olympic Weightlifting', defaultPerWeek: 4, desc: 'Snatch and clean & jerk focus with strength accessories.' },
   calisthenics: { label: 'Calisthenics',     defaultPerWeek: 4, desc: 'Bodyweight strength and skill progressions — minimal equipment.' },
   yoga:         { label: 'Yoga',             defaultPerWeek: 4, desc: 'Flow-based mobility, balance, and breath sessions.' },
+  hiit:         { label: 'HIIT',             defaultPerWeek: 4, desc: 'High-intensity interval training — short, hard bursts with brief recovery to torch calories and build conditioning.' },
+  liss:         { label: 'LISS Cardio',      defaultPerWeek: 4, desc: 'Low-intensity steady-state cardio — sustained, easy-paced sessions for fat loss and aerobic base.' },
+  prenatal:     { label: 'Prenatal',         defaultPerWeek: 3, desc: 'Safe, supportive strength & mobility through pregnancy. Always clear exercise with your provider.' },
+  postnatal:    { label: 'Postnatal',        defaultPerWeek: 3, desc: 'Gradual core, pelvic-floor, and strength rebuilding postpartum. Begin only with provider clearance.' },
 };
-function getTrainingStyle(){ return localStorage.getItem('ffp_program_style') || 'general'; }
+function getTrainingStyle(){
+  let s = localStorage.getItem('ffp_program_style') || 'general';
+  // Safety: prenatal/postnatal are only valid for female users. If a non-female user
+  // somehow has one selected, fall back to the default program.
+  if((s==='prenatal' || s==='postnatal') && profile.gender !== 'female') s = 'general';
+  return s;
+}
 function setTrainingStyle(style){
   localStorage.setItem('ffp_program_style', style);
   // NOTE: we do NOT wipe edits — each style keeps its own saved program & volume.
@@ -3844,6 +3964,44 @@ function getStyleBaseProgram(){
   return WORKOUT_STRUCTURE;
 }
 function customProgramKey(){ return 'ffp_custom_program_'+getTrainingStyle(); }
+
+// Prominent safety disclaimer for prenatal/postnatal programs
+// Cardio finisher appended to workouts for fat-loss-focused users.
+function cardioFinisherHTML(wo){
+  if(!profile.cardioFinisher) return '';
+  const style = getTrainingStyle();
+  // Skip for styles that are already conditioning/cardio-centric or low-intensity by design
+  if(['yoga','prenatal','postnatal','crossfit','hiit','liss'].includes(style)) return '';
+  // Vary the finisher a little by workout type
+  const type = (wo.type||'').toUpperCase();
+  let rec;
+  if(type.includes('LEG')||type.includes('LOWER')||type.includes('SQUAT')){
+    rec = '12–15 min steady-state incline walk or cycle (Zone 2, ~65–70% max HR)';
+  } else if(type.includes('PUSH')||type.includes('PULL')||type.includes('UPPER')){
+    rec = '10–15 min moderate row, bike, or brisk incline walk (Zone 2)';
+  } else {
+    rec = '10–15 min Zone 2 cardio (row, bike, incline walk) — or a 6–10 min interval finisher (30s hard / 60s easy)';
+  }
+  return `<div style="background:rgba(192,57,43,0.10);border:1px solid #c0392b55;border-radius:10px;padding:0.75rem;margin-top:0.25rem;margin-bottom:0.5rem">
+    <div style="font-size:0.68rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#c0392b;margin-bottom:0.35rem">🔥 Cardio Finisher</div>
+    <div style="font-size:0.85rem;line-height:1.5;color:var(--text)">${rec}.</div>
+    <div style="font-size:0.72rem;color:var(--muted);margin-top:0.35rem">Added to support your fat-loss goal. Keep it conversational-pace unless doing the intervals. You can turn this off by changing your goal in Account.</div>
+  </div>`;
+}
+
+function maternityDisclaimerHTML(){
+  if(profile.gender !== 'female') return '';
+  const style = getTrainingStyle();
+  if(style!=='prenatal' && style!=='postnatal') return '';
+  const isPre = style==='prenatal';
+  const body = isPre
+    ? "These are general, conservative starting points — not medical advice. Pregnancy training varies by person and trimester. Get clearance from your doctor or midwife before exercising, stop immediately and seek care if you feel pain, dizziness, contractions, fluid leakage, bleeding, or reduced fetal movement, and avoid lying flat on your back for long periods after the first trimester."
+    : "These are general, conservative starting points — not medical advice. Only begin once you've had your postpartum check-up and provider clearance (typically ~6 weeks, longer after a C-section). Progress gradually, prioritize breathing and pelvic-floor reconnection first, and stop and seek care if you notice pain, heavy bleeding, leaking, or abdominal doming/coning.";
+  return `<div style="background:rgba(230,126,34,0.12);border:1px solid #e67e22;border-radius:12px;padding:0.85rem 1rem;margin-bottom:1rem">
+    <div style="font-size:0.82rem;font-weight:800;color:#e67e22;margin-bottom:0.3rem">⚠️ Important — ${isPre?'Prenatal':'Postnatal'} Safety</div>
+    <div style="font-size:0.76rem;line-height:1.5;color:var(--text)">${body}</div>
+  </div>`;
+}
 function getActiveProgram(){
   let custom=null;
   try { custom = JSON.parse(localStorage.getItem(customProgramKey())||'null'); } catch {}
@@ -3914,19 +4072,36 @@ function bodyweightSubFor(exerciseName, head){
 }
 
 // Given a section, return an {equipment, exercise} adjusted for available equipment.
-// If the prescribed equipment is unavailable, substitute the closest available option;
-// if nothing weighted is available, swap to a similar bodyweight movement.
+// RULE: Bodyweight is only ever a default for calisthenics & yoga styles. For every other
+// style, a weighted exercise keeps weighted equipment (BB/DB/KB) — it never drops to
+// bodyweight automatically. Exercises that are inherently bodyweight stay bodyweight.
 function adaptSectionToEquipment(s){
   const origEquip = s.equipment || '';
+  // Inherently bodyweight (or unset) → leave as-is
+  if(!origEquip || origEquip==='Bodyweight') return { equipment: origEquip, exercise: s.exercise||s.lift, swapped:false };
+  // If the assigned equipment is available, keep it untouched
   if(isEquipAvailable(origEquip)) return { equipment: origEquip, exercise: s.exercise||s.lift, swapped:false };
-  const alt = bestAvailableEquip(origEquip);
-  if(alt!=='Bodyweight'){
-    // Keep the same exercise, just change the implement
-    return { equipment: alt, exercise: s.exercise||s.lift, swapped:true, reason:`${origEquip}→${alt}` };
+
+  const style = (typeof getTrainingStyle==='function') ? getTrainingStyle() : 'general';
+  const bodyweightStyle = (style==='calisthenics' || style==='yoga' || style==='prenatal' || style==='postnatal');
+
+  // Try to keep the movement using another WEIGHTED implement the user owns
+  const WEIGHTED = ['BB','DB','KB','Cable','Machine','Smith Machine','EZ Curl Bar','MB'];
+  for(const code of WEIGHTED){
+    if(code!==origEquip && isEquipAvailable(code)) {
+      return { equipment: code, exercise: s.exercise||s.lift, swapped:true, reason:`${origEquip}→${code}` };
+    }
   }
-  // No weighted gear: substitute a similar bodyweight movement
-  const sub = bodyweightSubFor(s.exercise||s.lift, s.head);
-  return { equipment:'Bodyweight', exercise: sub || (s.exercise||s.lift), swapped:!!sub, reason:'bodyweight' };
+
+  // Only calisthenics/yoga (or an explicit bodyweight-only user) fall back to bodyweight
+  const bwOnly = selectedEquipment.has('No Equipment (Bodyweight Only)');
+  if(bodyweightStyle || bwOnly){
+    const sub = bodyweightSubFor(s.exercise||s.lift, s.head);
+    return { equipment:'Bodyweight', exercise: sub || (s.exercise||s.lift), swapped:!!sub, reason:'bodyweight' };
+  }
+
+  // Otherwise: keep the originally assigned (weighted) equipment. Don't drop to bodyweight.
+  return { equipment: origEquip, exercise: s.exercise||s.lift, swapped:false };
 }
 
 
@@ -4728,19 +4903,41 @@ function updateWorkoutsPage() {
   const desc = modeDescriptions[autoMode] || modeDescriptions.hypertrophy;
 
   if (modeEl) {
-    modeEl.style.display = 'block';
-    if (periodPhase && wantsCompSchedule) {
-      const sportSeason = localStorage.getItem('ffp_comp_sport_season') || 'your sport';
-      modeEl.className = 'alert alert-success';
-      modeEl.innerHTML = colorPhaseWords(`🏆 <strong>${periodPhase.phase} Phase</strong> — ${periodPhase.description} ${desc.detail}`);
+    // The phase banner (strength/hypertrophy/power/endurance) only applies to
+    // percentage-based periodized programs. Hide it for styles that don't use
+    // %-based loading (e.g. calisthenics, yoga, prenatal, postnatal) or when the
+    // user has turned percentage-based loading off.
+    const style = (typeof getTrainingStyle==='function') ? getTrainingStyle() : 'general';
+    const nonPeriodized = ['calisthenics','yoga','hiit','liss','prenatal','postnatal'];
+    const pctOn = (typeof getPctTraining==='function') ? getPctTraining() : true;
+    const showPhase = pctOn && !nonPeriodized.includes(style);
+    if(!showPhase){
+      modeEl.style.display = 'none';
     } else {
-      modeEl.className = 'alert alert-info';
-      modeEl.innerHTML = colorPhaseWords(desc.detail);
+      modeEl.style.display = 'block';
+      if (periodPhase && wantsCompSchedule) {
+        const sportSeason = localStorage.getItem('ffp_comp_sport_season') || 'your sport';
+        modeEl.className = 'alert alert-success';
+        modeEl.innerHTML = colorPhaseWords(`🏆 <strong>${periodPhase.phase} Phase</strong> — ${periodPhase.description} ${desc.detail}`);
+      } else {
+        modeEl.className = 'alert alert-info';
+        modeEl.innerHTML = colorPhaseWords(desc.detail);
+      }
     }
   }
 
   const subtitleEl = document.getElementById('workout-subtitle');
-  if (subtitleEl) subtitleEl.textContent = `${name} personalized program — ${desc.subtitle}`;
+  if (subtitleEl) {
+    const style2 = (typeof getTrainingStyle==='function') ? getTrainingStyle() : 'general';
+    const nonPeriodized2 = ['calisthenics','yoga','hiit','liss','prenatal','postnatal'];
+    const pctOn2 = (typeof getPctTraining==='function') ? getPctTraining() : true;
+    if(!pctOn2 || nonPeriodized2.includes(style2)){
+      const sd = (typeof PROGRAM_STYLES!=='undefined' && PROGRAM_STYLES[style2]) ? PROGRAM_STYLES[style2].desc : '';
+      subtitleEl.textContent = `${name} personalized program${sd?' — '+sd:''}`;
+    } else {
+      subtitleEl.textContent = `${name} personalized program — ${desc.subtitle}`;
+    }
+  }
 
   const container = document.getElementById('workouts-container');
   if (!container) return;
@@ -4800,7 +4997,7 @@ function videoLink(exerciseName, equipment) {
   const GHD_EXERCISES = ['hip extension','back extension','glute ham flexion','glute-ham flexion','reverse ghd sit-up','reverse ghd sit-ups','reverse ghd situp','reverse sit-up','ghd sit-up'];
   const lower = (exerciseName||'').toLowerCase().trim();
   // Map equipment abbreviations to search-friendly words
-  const EQ_WORDS = {BB:'barbell',DB:'dumbbell',KB:'kettlebell',Cable:'cable',Machine:'machine',Band:'resistance band',Bodyweight:'',MB:'medicine ball','EZ Curl Bar':'EZ bar','Smith Machine':'Smith machine',GHD:'GHD machine',Box:'box',Sled:'sled'};
+  const EQ_WORDS = {BB:'barbell',DB:'dumbbell',KB:'kettlebell',Cable:'cable',Machine:'machine',Band:'resistance band',Bodyweight:'',MB:'medicine ball','EZ Curl Bar':'EZ bar','Smith Machine':'Smith machine',GHD:'GHD machine',Box:'box',Sled:'sled',Cones:'cone drill',Ladder:'agility ladder',Parachute:'speed parachute',Hill:'hill',Hurdles:'hurdle',Sandbag:'sandbag','Battle Ropes':'battle rope','Pull-up Bar':'pull-up bar','Gymnastic Rings':'gymnastic rings','Jump Rope':'jump rope','Wall Ball':'wall ball','Rower':'rowing machine','Assault Bike':'assault bike','Ski Erg':'ski erg','Climbing Rope':'rope climb','Bumper Plates':'bumper plate','Slam Ball':'slam ball','Dip Bars':'dip bar','Plyo Box':'plyo box',Yoke:'yoke carry','Axle Bar':'axle bar','Wreck Bag':'wreck bag'};
   let query;
   if(GHD_EXERCISES.some(g=>lower.includes(g)) || lower.includes('ghd')){
     query = encodeURIComponent(exerciseName.replace(/ghd/ig,'').trim() + ' on GHD machine technique');
@@ -6482,6 +6679,7 @@ const OB_STEPS = [
   'welcome',        // 1.  Welcome
   'name',           // 2.  What's your name?
   'gender',         // 3.  Biological sex
+  'pregnancy',      // 3b. Pregnancy status (only shown to female users)
   'age',            // 4.  How old are you?
   'weight',         // 5.  How much do you weigh?
   'height',         // 6.  How tall are you?
@@ -6518,6 +6716,10 @@ function startOnboarding() {
 
 function finishOnboarding() {
   localStorage.setItem('ffp_onboarded', '1');
+  // Pregnant users are auto-assigned the Prenatal program
+  if (profile.gender === 'female' && profile.pregnant === true) {
+    try { localStorage.setItem('ffp_program_style','prenatal'); } catch {}
+  }
   document.getElementById('onboarding').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   restoreProfile();
@@ -6541,6 +6743,10 @@ function obNext() {
   obSaveCurrentStep();
   if (obCurrentStep < OB_STEPS.length - 1) {
     obCurrentStep++;
+    // Skip the pregnancy step for anyone who isn't female
+    if (OB_STEPS[obCurrentStep] === 'pregnancy' && profile.gender !== 'female') {
+      obCurrentStep++;
+    }
     renderObStep();
   } else {
     finishOnboarding();
@@ -6550,12 +6756,17 @@ function obNext() {
 function obBack() {
   if (obCurrentStep > 0) {
     obCurrentStep--;
+    if (OB_STEPS[obCurrentStep] === 'pregnancy' && profile.gender !== 'female') {
+      obCurrentStep--;
+    }
     renderObStep();
   }
 }
 
 function obGoTo(idx) {
   obSaveCurrentStep();
+  // Don't allow landing on the pregnancy step if not female
+  if (OB_STEPS[idx] === 'pregnancy' && profile.gender !== 'female') return;
   obCurrentStep = idx;
   renderObStep();
 }
@@ -6570,7 +6781,16 @@ function obSaveCurrentStep() {
   }
   if (step === 'gender') {
     const v = document.querySelector('#ob-step-container .ob-option.selected')?.dataset?.value;
-    if (v) { profile.gender = v; save(); }
+    if (v) { profile.gender = v; if(v!=='female') profile.pregnant = false; save(); }
+  }
+  if (step === 'pregnancy') {
+    const v = document.querySelector('#ob-step-container .ob-option.selected')?.dataset?.value;
+    if (v) {
+      profile.pregnant = (v === 'yes');
+      save();
+      // If pregnant, automatically assign the Prenatal program
+      if (profile.pregnant) { try { localStorage.setItem('ffp_program_style','prenatal'); } catch {} }
+    }
   }
   if (step === 'age') {
     const v = document.getElementById('ob-age')?.value;
@@ -6709,6 +6929,25 @@ function getObStepHTML(step) {
         </div>
       </div>`;
 
+    // ── 3b. PREGNANCY (female only) ───────────────
+    case 'pregnancy': return `
+      <div class="ob-step-icon">🤰</div>
+      <div class="ob-step-title">ARE YOU<br><span>CURRENTLY PREGNANT?</span></div>
+      <div class="ob-step-subtitle">This lets us tailor your training safely. You can change this anytime later.</div>
+      <div class="ob-step-body">
+        <div class="ob-option ${profile.pregnant === true ? 'selected' : ''}" data-value="yes" onclick="obSelectPregnancy(this)">
+          <span class="ob-option-icon">🤰</span>
+          <div class="ob-option-text"><h4>Yes, I'm pregnant</h4><p>We'll automatically assign you the Prenatal training program.</p></div>
+          <div class="ob-option-check"></div>
+        </div>
+        <div class="ob-option ${profile.pregnant === false ? 'selected' : ''}" data-value="no" onclick="obSelectPregnancy(this)">
+          <span class="ob-option-icon">🙂</span>
+          <div class="ob-option-text"><h4>No, not currently</h4><p>Prenatal &amp; Postnatal programs are always available under Edit Program in Workouts.</p></div>
+          <div class="ob-option-check"></div>
+        </div>
+        <div id="ob-pregnancy-note" style="display:none;margin-top:1rem;padding:0.85rem 1rem;border-radius:12px;font-size:0.8rem;line-height:1.5"></div>
+      </div>`;
+
     // ── 4. AGE ────────────────────────────────────
     case 'age': return `
       <div class="ob-step-icon">🎂</div>
@@ -6838,16 +7077,19 @@ function getObStepHTML(step) {
     // ── 10. TRAINING STYLE ────────────────────────
     case 'training_style': return `
       <div class="ob-step-icon">🏆</div>
-      <div class="ob-step-title">HOW DO YOU<br><span>LIKE TO TRAIN?</span></div>
-      <div class="ob-step-subtitle">Select everything that fits. Your training mode, exercise selection, and intensity will all be shaped around your style. Pick as many as you want.</div>
+      <div class="ob-step-title">WHICH PROGRAM<br><span>DO YOU WANT?</span></div>
+      <div class="ob-step-subtitle">Pick the training style you'd like programmed for you. This shapes your workouts, exercise selection, and intensity. You can change it anytime in the Edit Program tab.</div>
       <div class="ob-step-body">
         <div class="ob-multi-grid">
-          ${TRAINING_STYLES.map(s => `
-            <div class="ob-chip ${selectedTrainingStyles.includes(s)?'selected':''}" onclick="obToggleStyle('${s.replace(/'/g,"\\'")}',this)">
-              ${s}
+          ${Object.keys(PROGRAM_STYLES).filter(k => {
+            if((k==='prenatal' || k==='postnatal') && profile.gender !== 'female') return false;
+            return true;
+          }).map(k => `
+            <div class="ob-chip ${getTrainingStyle()===k ? 'selected' : ''}" data-style="${k}" onclick="obSelectProgramStyle('${k}',this)">
+              ${PROGRAM_STYLES[k].label}
             </div>`).join('')}
         </div>
-        <div class="ob-skip" onclick="obNext()">Not sure yet — skip</div>
+        <div class="ob-skip" onclick="obNext()">Not sure yet — start with Strength &amp; Conditioning</div>
       </div>`;
 
     // ── 11. ADD-ONS ───────────────────────────────
@@ -7039,6 +7281,28 @@ function getObStepHTML(step) {
   return '';
 }
 
+function obSelectPregnancy(el) {
+  document.querySelectorAll('#ob-step-container .ob-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  const val = el.getAttribute('data-value');
+  profile.pregnant = (val === 'yes');
+  try { localStorage.setItem('ffp_profile', JSON.stringify(profile)); } catch (e) {}
+  if (profile.pregnant) { try { localStorage.setItem('ffp_program_style','prenatal'); } catch {} }
+  const note = document.getElementById('ob-pregnancy-note');
+  if (note) {
+    note.style.display = 'block';
+    if (profile.pregnant) {
+      note.style.background = 'rgba(45,122,95,0.12)';
+      note.style.border = '1px solid var(--accent)';
+      note.innerHTML = `<strong>✓ You're all set.</strong> We'll automatically assign you the <strong>Prenatal</strong> training program — safe, supportive strength and mobility through pregnancy. Always clear exercise with your healthcare provider.`;
+    } else {
+      note.style.background = 'var(--surface2)';
+      note.style.border = '1px solid var(--border)';
+      note.innerHTML = `Got it! If you ever need them, the <strong>Prenatal</strong> and <strong>Postnatal</strong> programs are available anytime under <strong>Edit Program</strong> in the Workouts tab.`;
+    }
+  }
+}
+
 function obSelectOption(field, el) {
   document.querySelectorAll('#ob-step-container .ob-option').forEach(o => o.classList.remove('selected'));
   el.classList.add('selected');
@@ -7071,6 +7335,26 @@ function obSelectGoal(goal, el) {
   el.classList.add('selected');
   selectedGoal = goal;
   profile.goal = goal;
+  // Goal and training style are independent — the user picks their own style.
+  // Fat-loss still adds a cardio finisher to the end of workouts.
+  if (goal === 'cut') {
+    profile.cardioFinisher = true;
+  } else {
+    if (profile.cardioFinisher) delete profile.cardioFinisher;
+  }
+  localStorage.setItem('ffp_profile', JSON.stringify(profile));
+}
+
+function obSelectProgramStyle(styleKey, el) {
+  document.querySelectorAll('#ob-step-container .ob-chip').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  // Apply the chosen program immediately (unless a pregnant user is auto-assigned prenatal)
+  if (!profile.pregnant) {
+    try { localStorage.setItem('ffp_program_style', styleKey); } catch {}
+  }
+  if (typeof annualPlan !== 'undefined') annualPlan = null;
+  // Also record it as a stated preference
+  profile.trainingStyles = [PROGRAM_STYLES[styleKey] ? PROGRAM_STYLES[styleKey].label : styleKey];
   localStorage.setItem('ffp_profile', JSON.stringify(profile));
 }
 
@@ -8107,7 +8391,7 @@ function saveCustomEquipment() {
 }
 
 // Equipment options users can pick from for any exercise
-const EQUIPMENT_OPTIONS = ['BB','DB','KB','Cable','Machine','Band','Bodyweight','MB','EZ Curl Bar','Smith Machine','GHD'];
+const EQUIPMENT_OPTIONS = ['BB','DB','KB','Cable','Machine','Band','Bodyweight','MB','EZ Curl Bar','Smith Machine','GHD','Box','Cones','Ladder','Parachute','Sled','Hill','Hurdles','Sandbag','Battle Ropes','Pull-up Bar','Gymnastic Rings','Jump Rope','Wall Ball','Rower','Assault Bike','Ski Erg','Climbing Rope','Bumper Plates','Slam Ball','Dip Bars','Plyo Box','Yoke','Axle Bar','Wreck Bag'];
 
 // Slot key used for both exercise + equipment overrides
 function slotKey(workoutId, sectionHead, originalLift){ return `${workoutId}:${sectionHead}:${originalLift}`; }
@@ -9778,11 +10062,41 @@ function showWorkoutTab(tab, btn) {
 }
 
 // ── MY MAXES PAGE ──────────────────────────────
+// Returns the list of lifts that should be max-tested for the CURRENT training style.
+// Maxes only apply to barbell/dumbbell/kettlebell work, so we scan the active program
+// and collect every exercise assigned to those implements. Styles that don't use
+// percentage-based loading (yoga, calisthenics, prenatal, postnatal) return none.
+function getStyleMaxableLifts(){
+  const style = getTrainingStyle();
+  if(['yoga','calisthenics','hiit','liss','prenatal','postnatal'].includes(style)) return [];
+  const prog = (typeof getActiveProgram==='function') ? getActiveProgram() : [];
+  const WEIGHTED = ['BB','DB','KB'];
+  const set = new Set();
+  prog.forEach(wo=>{
+    (wo.sections||[]).forEach(s=>{
+      const eq = s.equipment || '';
+      if(!WEIGHTED.some(w=>eq.startsWith(w))) return;
+      // Use the user's active (possibly swapped) exercise name if available
+      const origLift = s.lift || s.exercise || s.head || '';
+      let name = origLift;
+      if(typeof getActiveExercise==='function'){
+        const ov = getActiveExercise(wo.id, s.head, origLift);
+        if(ov) name = ov;
+      }
+      // Skip pure conditioning / cardio entries
+      if(name && !/run|row|bike|jump rope|double.under|sprint/i.test(name)) set.add(name);
+    });
+  });
+  // Fall back to the classic list if the program yielded nothing (e.g. general)
+  if(!set.size) return Object.keys(MAXABLE_LIFTS).sort((a,b)=>a.localeCompare(b));
+  return [...set].sort((a,b)=>a.localeCompare(b));
+}
+
 function renderMaxesPage() {
   const container = document.getElementById('maxes-container');
   if (!container) return;
   maxes = JSON.parse(localStorage.getItem('ffp_maxes') || '{}');
-  const lifts = Object.keys(MAXABLE_LIFTS).sort((a, b) => a.localeCompare(b));
+  const lifts = getStyleMaxableLifts();
   const filled = lifts.filter(l => maxes[l] && maxes[l].oneRM).length;
 
   let html = `<div class="card" style="margin-bottom:1rem">
@@ -10726,12 +11040,19 @@ function renderEditProgram(){
   const prog = getActiveProgram();
   const isCustom = !!localStorage.getItem(customProgramKey());
 
-  const styleBtns = Object.keys(PROGRAM_STYLES).map(k=>{
+  // Prenatal/Postnatal only surface for female users. Pregnant users are auto-assigned
+  // Prenatal during onboarding; non-pregnant female users can still choose them here.
+  const showMaternity = (profile.gender === 'female');
+  const styleBtns = Object.keys(PROGRAM_STYLES).filter(k=>{
+    if((k==='prenatal' || k==='postnatal') && !showMaternity) return false;
+    return true;
+  }).map(k=>{
     const s=PROGRAM_STYLES[k];const on=k===style;
     return `<button onclick="changeProgramStyle('${k}')" class="btn ${on?'':'btn-outline'}" style="flex:1;min-width:130px;padding:0.6rem 0.4rem;font-size:0.78rem;font-weight:700">${s.label}</button>`;
   }).join('');
 
   let html = `
+  ${maternityDisclaimerHTML()}
   <div class="card" style="margin-bottom:1rem">
     <div class="card-title" style="margin-bottom:0.5rem">✏️ Edit Your Program</div>
     <p style="font-size:0.8rem;color:var(--muted);margin-bottom:0.85rem">Tap any exercise or its equipment to change it — just like in your daily workout. Changes apply automatically to your Today, Week, Month, and Home schedules. Sets &amp; reps are set automatically by your training phase; ask the AI Coach if you'd like those adjusted.</p>
@@ -10773,7 +11094,7 @@ function renderEditProgram(){
     const body = document.createElement('div');
     card.appendChild(body);
     el.appendChild(card);
-    if(typeof renderWorkoutDetail==='function') renderWorkoutDetail(wo, body);
+    if(typeof renderWorkoutDetail==='function') renderWorkoutDetail(wo, body, {hideDisclaimer:true});
   });
 }
 
@@ -10909,7 +11230,8 @@ function equipToggleBodyweightOnly(){
   if(typeof renderHomePage==='function') renderHomePage();
 }
 
-function renderWorkoutDetail(wo,container){
+function renderWorkoutDetail(wo,container,opts){
+  opts=opts||{};
   if(!wo){container.innerHTML='<div class="alert alert-warning">Workout not found.</div>';return;}
   const ph=PHASES[currentPhase]||PHASES.strength;
   const wup=wo.warmup||{};
@@ -10956,7 +11278,7 @@ function renderWorkoutDetail(wo,container){
       ${presc}
     </div>`;
   }).join('');
-  container.innerHTML=`<div class="card" style="margin-top:0.75rem"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem"><div><div style="font-size:0.65rem;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">Workout ${woNum} of 12</div><div style="font-size:1.1rem;font-weight:800;color:var(--text)">${wo.label}</div><div style="font-size:0.8rem;font-weight:700;color:var(--accent)">${wo.type} Day</div></div></div><div style="background:var(--surface2);border-radius:10px;padding:0.75rem;margin-bottom:0.75rem"><div style="font-size:0.68rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:0.5rem">🔥 Warm-Up</div><div style="display:flex;flex-direction:column;gap:0.5rem"><div><span style="font-size:0.72rem;font-weight:700;color:var(--muted)">Cardio: </span><span style="font-size:0.85rem;font-weight:600">${wup.cardio||''}</span> <span style="font-size:0.75rem;color:var(--muted)">· ${wup.duration||''}</span></div><div><span style="font-size:0.72rem;font-weight:700;color:var(--muted)">Massage Gun: </span><span style="font-size:0.82rem;color:var(--accent);font-weight:500">All muscles being trained today + any sore areas.</span></div><div><div style="font-size:0.72rem;font-weight:700;color:var(--muted);margin-bottom:0.25rem">Mobility (specific to today\u2019s lifts):</div><div style="display:flex;flex-direction:column;gap:0.3rem">${getWarmupMobilityForWorkout(wo).map(m=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem"><span style="font-size:0.78rem">${m}</span>${typeof videoBtnHTML==='function'?videoBtnHTML(m):''}</div>`).join('')}</div></div></div></div>${sectionsHTML}${renderWorkoutCompleteSection(wo,woNum)}</div>`;
+  container.innerHTML=`${(!opts.hideDisclaimer && typeof maternityDisclaimerHTML==='function')?maternityDisclaimerHTML():''}<div class="card" style="margin-top:0.75rem"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem"><div><div style="font-size:0.65rem;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">Workout ${woNum} of 12</div><div style="font-size:1.1rem;font-weight:800;color:var(--text)">${wo.label}</div><div style="font-size:0.8rem;font-weight:700;color:var(--accent)">${wo.type} Day</div></div></div><div style="background:var(--surface2);border-radius:10px;padding:0.75rem;margin-bottom:0.75rem"><div style="font-size:0.68rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:0.5rem">🔥 Warm-Up</div><div style="display:flex;flex-direction:column;gap:0.5rem"><div><span style="font-size:0.72rem;font-weight:700;color:var(--muted)">Cardio: </span><span style="font-size:0.85rem;font-weight:600">${wup.cardio||''}</span> <span style="font-size:0.75rem;color:var(--muted)">· ${wup.duration||''}</span></div><div><span style="font-size:0.72rem;font-weight:700;color:var(--muted)">Massage Gun: </span><span style="font-size:0.82rem;color:var(--accent);font-weight:500">All muscles being trained today + any sore areas.</span></div><div><div style="font-size:0.72rem;font-weight:700;color:var(--muted);margin-bottom:0.25rem">Mobility (specific to today\u2019s lifts):</div><div style="display:flex;flex-direction:column;gap:0.3rem">${getWarmupMobilityForWorkout(wo).map(m=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem"><span style="font-size:0.78rem">${m}</span>${typeof videoBtnHTML==='function'?videoBtnHTML(m):''}</div>`).join('')}</div></div></div></div>${sectionsHTML}${(typeof cardioFinisherHTML==='function'?cardioFinisherHTML(wo):'')}${renderWorkoutCompleteSection(wo,woNum)}</div>`;
 }
 
 // ── Workout completion + "how did it feel" feedback ───────────────────────

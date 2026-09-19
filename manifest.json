@@ -1,0 +1,16 @@
+{
+  "name": "Milton's Brain",
+  "short_name": "Milton's Brain",
+  "description": "Personalized strength, conditioning, and recovery coach",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0f1a16",
+  "theme_color": "#2d7a5f",
+  "orientation": "portrait-primary",
+  "categories": ["fitness", "health", "sports"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

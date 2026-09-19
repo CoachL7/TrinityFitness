@@ -81,6 +81,15 @@
   };
 }catch(e){}
 })();
+// PWA Service Worker — required for Chrome install prompt
+(function(){try{
+  if("serviceWorker" in navigator){
+    window.addEventListener("load",function(){
+      navigator.serviceWorker.register("sw.js").catch(function(){});
+    });
+  }
+}catch(e){}
+})();
 </script>
 <meta charset="UTF-8">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -10583,10 +10592,15 @@ function obSelectBodyweightOnly(el) {
 
 // OB helper functions
 function obSelectGoal(goal, el) {
-  document.querySelectorAll('#ob-step-container .ob-option').forEach(o => o.classList.remove('selected'));
-  el.classList.add('selected');
   selectedGoal = goal;
   profile.goal = goal;
+  // Re-highlight by walking every option in this step and matching its own onclick goal,
+  // so selection never depends on which child element received the tap.
+  document.querySelectorAll('#ob-step-container .ob-option').forEach(function(o){
+    var oc = o.getAttribute('onclick') || '';
+    var isThis = oc.indexOf("obSelectGoal('" + goal + "'") !== -1;
+    o.classList.toggle('selected', isThis);
+  });
   // Goal and training style are independent — the user picks their own style.
   // Fat-loss still adds a cardio finisher to the end of workouts.
   if (goal === 'cut') {

@@ -3305,7 +3305,7 @@ const WORKOUT_STRUCTURE = [
         "head": "Horizontal Pull",
         "exercise": "Standing Row",
         "equipment": "Cable",
-        "note": "*can use band"
+        "note": ""
       },
       {
         "head": "Accessory",
@@ -3317,7 +3317,7 @@ const WORKOUT_STRUCTURE = [
         "head": "Accessory",
         "exercise": "Cable Fly",
         "equipment": "Cable",
-        "note": "*can use bands"
+        "note": ""
       },
       {
         "head": "Posterior Core",
@@ -3451,7 +3451,7 @@ const WORKOUT_STRUCTURE = [
         "head": "Vertical Pull",
         "exercise": "Pull-Up/Chin-Up",
         "equipment": "Bodyweight",
-        "note": "*can use band"
+        "note": ""
       },
       {
         "head": "Horizontal Pull",
@@ -3557,7 +3557,7 @@ const WORKOUT_STRUCTURE = [
         "head": "Rotational Core",
         "exercise": "Pallof Press",
         "equipment": "Cable",
-        "note": "*can use band"
+        "note": ""
       },
       {
         "head": "MB",
@@ -3615,7 +3615,7 @@ const WORKOUT_STRUCTURE = [
         "head": "Accessory",
         "exercise": "Hamstring Curl",
         "equipment": "Machine",
-        "note": "*can use band"
+        "note": ""
       },
       {
         "head": "Accessory",
@@ -3785,7 +3785,7 @@ const WORKOUT_STRUCTURE = [
         "head": "Rotational Core",
         "exercise": "Twist",
         "equipment": "Cable",
-        "note": "*can use band"
+        "note": ""
       },
       {
         "head": "MB",
@@ -3849,7 +3849,7 @@ const WORKOUT_STRUCTURE = [
         "head": "Accessory",
         "exercise": "Hip Add/Abd",
         "equipment": "Machine",
-        "note": "seated *can use band on foot"
+        "note": "seated"
       },
       {
         "head": "Anterior Core",
@@ -3907,13 +3907,13 @@ const WORKOUT_STRUCTURE = [
         "head": "Vertical Pull",
         "exercise": "Lat Pulldown",
         "equipment": "Cable",
-        "note": "*can use band"
+        "note": ""
       },
       {
         "head": "Horizontal Pull",
         "exercise": "SA Row",
         "equipment": "Cable",
-        "note": "*can use band"
+        "note": ""
       },
       {
         "head": "Accessory",
@@ -3925,7 +3925,7 @@ const WORKOUT_STRUCTURE = [
         "head": "Accessory",
         "exercise": "Leg Extension",
         "equipment": "Machine",
-        "note": "seated *can use band"
+        "note": "seated"
       },
       {
         "head": "Anterior Core",
@@ -4013,7 +4013,7 @@ const WORKOUT_STRUCTURE = [
         "head": "Rotational Core",
         "exercise": "Split Lift",
         "equipment": "Cable",
-        "note": "*can use band"
+        "note": ""
       },
       {
         "head": "MB",
@@ -5336,9 +5336,15 @@ function adaptSectionToEquipment(s){
 
   // Try to keep the movement using another WEIGHTED implement the user owns
   const WEIGHTED = ['BB','DB','KB','Cable','Machine','Smith Machine','EZ Curl Bar','MB'];
-  for(const code of WEIGHTED){
-    if(code!==origEquip && isEquipAvailable(code)) {
-      return { equipment: code, exercise: origEx, swapped:true, reason:`${origEquip}→${code}` };
+  // Exercises whose NAME is tied to a specific implement must NOT be silently relabeled
+  // (e.g. a "Lat Pulldown" can't just become a "Barbell" — that's the bug we're fixing).
+  // If a name-locked movement reaches here, force a bodyweight/appropriate swap instead.
+  const nameLocked = /pulldown|pull-down|cable|machine|leg press|leg curl|leg extension|pec deck|pec-deck|smith|pushdown|woodchop|pallof|crossover|face pull/i.test(origEx);
+  if(!nameLocked){
+    for(const code of WEIGHTED){
+      if(code!==origEquip && isEquipAvailable(code)) {
+        return { equipment: code, exercise: origEx, swapped:true, reason:`${origEquip}→${code}` };
+      }
     }
   }
 
@@ -5387,6 +5393,41 @@ function specialtyMovementSub(ex){
     { match:['rowing','rower','row erg'], exercise:'Kettlebell Swing', equipment:'KB', bw:'Burpee' },
     // Wall-dependent parkour
     { match:['wall run','wall climb'], exercise:'Explosive Step-Up', equipment:'Bench', bw:'Tuck Jump' },
+    // ── Cable/machine-specific movements: can't just become "barbell" — swap the movement ──
+    // Band-eligible movements: prefer a band version when the machine/cable isn't available.
+    { match:['standing row','seated cable row','cable row','seated row','high cable row','low cable row','sa row','single-arm cable row'], exercise:'Band Row', equipment:'Resistance Bands', bw:'Inverted Row' },
+    { match:['pallof press','cable pallof'], exercise:'Band Pallof Press', equipment:'Resistance Bands', bw:'Plank' },
+    { match:['hamstring curl','leg curl','lying leg curl','seated leg curl'], exercise:'Band Hamstring Curl', equipment:'Resistance Bands', bw:'Nordic Hamstring Curl' },
+    { match:['twist','cable woodchop','cable chop','cable rotation','woodchop'], exercise:'Band Woodchop', equipment:'Resistance Bands', bw:'Russian Twist' },
+    { match:['hip add','hip abd','hip abduction','hip adduction'], exercise:'Band Hip Abduction', equipment:'Resistance Bands', bw:'Side-Lying Leg Raise' },
+    { match:['leg extension'], exercise:'Band Leg Extension', equipment:'Resistance Bands', bw:'Split Squat' },
+    { match:['split lift'], exercise:'Band Split Squat', equipment:'Resistance Bands', bw:'Split Squat' },
+    { match:['cable fly','cable crossover','pec deck','pec-deck','chest fly (machine'], exercise:'Band Chest Fly', equipment:'Resistance Bands', bw:'Push-Up' },
+    // Vertical pull (lat pulldown) → band pulldown / pull-up
+    { match:['lat pulldown','pulldown','pull-down','straight-arm pulldown','lat pullover'], exercise:'Band Lat Pulldown', equipment:'Resistance Bands', bw:'Pull-Up' },
+    // Cable pushdown / tricep machine → free-weight extension
+    { match:['tricep pushdown','rope pushdown','cable pushdown','pushdown','tricep extension (cable'], exercise:'Overhead Dumbbell Tricep Extension', equipment:'DB', bw:'Bench Dip' },
+    // Cable curl → dumbbell curl
+    { match:['cable curl','rope hammer curl','rope curl'], exercise:'Dumbbell Bicep Curl', equipment:'DB', bw:'Chin-Up' },
+    // Cable lateral raise → dumbbell lateral raise
+    { match:['cable lateral raise'], exercise:'Dumbbell Lateral Raise', equipment:'DB', bw:'Pike Push-Up' },
+    // Face pull → band face pull
+    { match:['cable face pull','face pull (cable'], exercise:'Band Face Pull', equipment:'Resistance Bands', bw:'Prone Y-T-W' },
+    // Cable woodchop / pallof → band version
+    { match:['cable woodchop','cable pallof','pallof press (cable','cable rotation','cable chop'], exercise:'Band Pallof Press', equipment:'Resistance Bands', bw:'Plank' },
+    // Leg press → squat pattern
+    { match:['leg press'], exercise:'Goblet Squat', equipment:'DB', bw:'Bodyweight Squat' },
+    // Leg curl (machine) → hamstring curl alternatives (band-first version handled above)
+    // Leg extension (machine) → handled above (band-first)
+    // Machine chest press → free-weight press
+    { match:['chest press machine','machine chest press','machine press'], exercise:'Dumbbell Bench Press', equipment:'DB', bw:'Push-Up' },
+    // Smith machine squat/press → free-weight equivalent (keep pattern)
+    { match:['smith machine squat'], exercise:'Back Squat', equipment:'BB', bw:'Bodyweight Squat' },
+    { match:['smith machine press','smith machine bench'], exercise:'Barbell Bench Press', equipment:'BB', bw:'Push-Up' },
+    // Cable kickback / hip machine → band
+    { match:['cable kickback','cable hip','hip abduction (machine','hip adduction (machine'], exercise:'Band Glute Kickback', equipment:'Resistance Bands', bw:'Glute Bridge' },
+    // Cable crunch → weighted crunch / bodyweight
+    { match:['cable crunch'], exercise:'Weighted Sit-Up', equipment:'DB', bw:'Crunch' },
   ];
   for(const item of M){
     if(item.match.some(w => n.includes(w))) return item;
@@ -6791,35 +6832,37 @@ function estimateMax(lift){
   const exp = (profile.experience||'').toLowerCase(); // 'beginner' | 'advanced' | else intermediate
   const bodyType = (profile.bodyType||'').toLowerCase();
 
-  // Base 1RM as a multiple of bodyweight for an UNTRAINED-to-NOVICE male. Conservative.
-  // These are intentionally on the low/safe side of published novice standards.
+  // Base 1RM = the UNTRAINED male standard as a multiple of bodyweight (from ExRx / Strength
+  // Level norms). This is the realistic, SAFE starting point for a true beginner — not so light
+  // it's useless, not so heavy it risks injury. Experience scales up from here.
   const baseMult = {
-    'Back Squat':0.75, 'Front Squat':0.60, 'Split Squat':0.40, 'Deadlift':0.95, 'Stiff Leg Deadlift':0.70,
-    'Good Morning':0.45, 'Hip Thruster':0.90, 'Bench Press':0.55, 'Incline Bench Press':0.45,
-    'Chest Press':0.50, 'SA Bench Press':0.22, 'Shoulder Press':0.38, 'Push Press':0.45, 'Arnold Press':0.30,
-    'SA Press':0.16, 'Bent Row':0.50, 'SA Row':0.22, 'Lat Pulldown':0.55, 'Clean High Pull':0.55
+    'Back Squat':0.75, 'Front Squat':0.60, 'Split Squat':0.35, 'Deadlift':1.00, 'Stiff Leg Deadlift':0.75,
+    'Good Morning':0.45, 'Hip Thruster':1.00, 'Bench Press':0.60, 'Incline Bench Press':0.50,
+    'Chest Press':0.55, 'SA Bench Press':0.25, 'Shoulder Press':0.40, 'Push Press':0.50, 'Arnold Press':0.30,
+    'SA Press':0.18, 'Bent Row':0.55, 'SA Row':0.25, 'Lat Pulldown':0.60, 'Clean High Pull':0.55
   };
   let mult = baseMult[lift];
   if(mult==null) mult = 0.45; // generic fallback for any other lift
 
-  // Experience multiplier (novice bias). Beginner starts well below "novice standard".
-  const expMult = exp==='beginner'?0.70 : exp==='advanced'?1.35 : 1.0;
-  // Female adjustment: lower-body ~0.70x, upper-body ~0.55x of male standards
+  // Experience: beginner ≈ untrained (1.0), intermediate ≈ midway to novice (1.35),
+  // advanced ≈ solid novice/early-intermediate (1.5) — strong but never beyond a safe estimate.
+  const expMult = exp==='beginner'?1.0 : exp==='advanced'?1.5 : 1.35;
+  // Female adjustment: lower-body ~0.72x, upper-body ~0.62x of male standards (published ratios).
   const upper = ['Bench Press','Incline Bench Press','Chest Press','SA Bench Press','Shoulder Press','Push Press','Arnold Press','SA Press','Bent Row','SA Row','Lat Pulldown'].includes(lift);
-  const genderMult = gender==='f' ? (upper?0.55:0.70) : 1.0;
-  // Age adjustment: peak ~20-30, gentle decline after
+  const genderMult = gender==='f' ? (upper?0.62:0.72) : 1.0;
+  // Age adjustment: peak ~20-30, gentle decline after; slightly reduced for under-18.
   let ageMult = 1.0;
-  if(age>30) ageMult = Math.max(0.72, 1 - (age-30)*0.006);
-  if(age<18) ageMult = 0.85;
+  if(age>30) ageMult = Math.max(0.75, 1 - (age-30)*0.005);
+  if(age<18) ageMult = 0.88;
   // Body type nudge (small)
   let btMult = 1.0;
-  if(bodyType.includes('ecto')) btMult=0.92;
-  else if(bodyType.includes('endo')||bodyType.includes('meso')) btMult=1.05;
+  if(bodyType.includes('ecto')) btMult=0.94;
+  else if(bodyType.includes('endo')||bodyType.includes('meso')) btMult=1.04;
 
   let est = bw * mult * expMult * genderMult * ageMult * btMult;
-  // Global safety haircut so first prescriptions are never too ambitious
-  est *= 0.90;
-  // Sensible floors (empty-bar-ish minimums) and rounding to 5 lb
+  // Small 5% safety margin so first prescriptions err slightly light (form-first), not crushing.
+  est *= 0.95;
+  // Sensible floors and rounding to 5 lb (barbell empty-bar floor applied separately at prescription).
   const floor = upper?30:45;
   est = Math.max(floor, Math.round(est/5)*5);
   return est;
@@ -15554,20 +15597,6 @@ function renderEditProgram(){
         <div style="width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:3px;left:${localStorage.getItem('ffp_tf_strength')==='1'?'21px':'3px'};transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,0.3)"></div>
       </div>
     </div>`:''}
-    ${(style!=='sportspecific' && typeof scEnabled==='function' && (selectedActivityGoals&&selectedActivityGoals.has&&(selectedActivityGoals.has('Competitive Sport')||selectedActivityGoals.has('Recreational Sport'))))?`
-    <div style="font-size:0.66rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:0.45rem">🎯 Sport-Specific Strength &amp; Conditioning</div>
-    <div style="background:${scEnabled()?'rgba(232,150,58,0.10)':'var(--surface2)'};border:1px solid ${scEnabled()?'rgba(232,150,58,0.4)':'var(--border,#e2e9e4)'};border-radius:12px;padding:0.85rem;margin-bottom:0.9rem">
-      <div style="display:flex;align-items:center;gap:0.7rem">
-        <div style="flex:1">
-          <div style="font-size:0.85rem;font-weight:700;color:var(--text)">${currentSC().label}</div>
-          <div style="font-size:0.74rem;color:var(--muted);margin-top:0.15rem;line-height:1.5">${scEnabled()?'Your foundation is auto-tailored to your sport. '+currentSC().emphasis:'Turn on to tailor your foundation to your sport.'}</div>
-        </div>
-        <div onclick="toggleSportSC()" style="cursor:pointer;width:44px;height:26px;border-radius:13px;flex-shrink:0;background:${scEnabled()?'#E8963A':'#ccc'};position:relative;transition:background .2s">
-          <div style="width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:3px;left:${scEnabled()?'21px':'3px'};transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,0.3)"></div>
-        </div>
-      </div>
-      ${scEnabled()?`<div style="font-size:0.72rem;color:var(--muted);margin-top:0.5rem">Detected from your profile${profile.competitiveSport||profile.recreationalSport?' ('+((profile.competitiveSport||profile.recreationalSport)+'').toLowerCase()+')':''}. Change your sport in Account to adjust.</div>`:''}
-    </div>`:''}
     ${((wantsSpeed||wantsPlyo) && (profile.competitiveSport||profile.recreationalSport||style==='sportspecific'))?`
     <div style="font-size:0.66rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:0.45rem">⚡ Speed · Agility · Plyometrics</div>
     <div style="background:var(--surface2);border:1px solid var(--border,#e2e9e4);border-radius:12px;padding:0.85rem;margin-bottom:0.9rem">
@@ -15845,7 +15874,7 @@ function renderWorkoutDetail(wo,container,opts){
     const ex=override || adapted.exercise || s.exercise || s.lift || s.head || '';
     const curEquip=equipOverride || adapted.equipment || s.equipment || '';
     const isWeighted=weightedEquip.some(eq=>(curEquip||'').startsWith(eq));
-    const pyramidHTML=isWeighted?renderPyramidTable(ex,currentPhase):'';
+    const pyramidHTML=isWeighted?renderPyramidTable(ex,currentPhase,curEquip):'';
     const wid=(wo.id||'').replace(/'/g,"\\'"), sh=(s.head||'').replace(/'/g,"\\'"), ol=origLift.replace(/'/g,"\\'");
     const uid=`${wo.id||'w'}-${si}`; // unique per workout+section (Edit page shows many workouts)
     const eqBadge=`<span onclick="toggleChangePop('eq-${uid}','${wid}','${sh}','${ol}')" style="font-size:0.7rem;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:0.15rem 0.55rem;cursor:pointer">${curEquip||'+ equip'}</span>`;
@@ -15929,16 +15958,57 @@ function completeWorkout(type, woNum, feel){
 
 
 function estimate1RM(weight,reps){if(reps===1)return weight;return Math.round(weight*(1+reps/30));}
-function getPyramidSets(phaseKey,oneRepMax){
-  const P={hypertrophy:[{pct:0.65,reps:'12'},{pct:0.70,reps:'10'},{pct:0.75,reps:'8'},{pct:0.80,reps:'6'}],endurance:[{pct:0.55,reps:'15'},{pct:0.60,reps:'12'},{pct:0.65,reps:'10'},{pct:0.65,reps:'10'}],strength:[{pct:0.70,reps:'6'},{pct:0.80,reps:'4'},{pct:0.85,reps:'3'},{pct:0.90,reps:'2'}],maxassess:[{pct:0.60,reps:'5'},{pct:0.75,reps:'3'},{pct:0.90,reps:'1'},{pct:0.95,reps:'1'}],power:[{pct:0.75,reps:'4'},{pct:0.80,reps:'3'},{pct:0.85,reps:'2'},{pct:0.90,reps:'1'}],competition:[{pct:0.80,reps:'3'},{pct:0.85,reps:'2'},{pct:0.90,reps:'1'},{pct:0.95,reps:'1'}]};
+function getPyramidSets(phaseKey,oneRepMax,isBarbell){
+  // Working-set prescriptions matched to the authored phase science:
+  //  strength 85–95% ×3–7 · hypertrophy 67–80% ×8–12 · endurance 55–65% ×15–25 · power 30–60% ×3–6 (explosive)
+  // Each phase = short warm-up ramp (marked 'warmup') + the phase's working sets.
+  const P={
+    hypertrophy:[
+      {pct:0.50,reps:'8',warmup:true},{pct:0.60,reps:'6',warmup:true},
+      {pct:0.70,reps:'12'},{pct:0.75,reps:'10'},{pct:0.78,reps:'8'}],
+    endurance:[
+      {pct:0.45,reps:'10',warmup:true},
+      {pct:0.55,reps:'20'},{pct:0.60,reps:'18'},{pct:0.62,reps:'15'}],
+    strength:[
+      {pct:0.55,reps:'5',warmup:true},{pct:0.70,reps:'3',warmup:true},
+      {pct:0.85,reps:'6'},{pct:0.88,reps:'4'},{pct:0.90,reps:'3'}],
+    maxassess:[
+      {pct:0.50,reps:'5',warmup:true},{pct:0.70,reps:'3',warmup:true},
+      {pct:0.85,reps:'2'},{pct:0.92,reps:'1'},{pct:0.97,reps:'1'}],
+    power:[
+      {pct:0.40,reps:'5',warmup:true},
+      {pct:0.45,reps:'5'},{pct:0.50,reps:'4'},{pct:0.55,reps:'3'}],
+    competition:[
+      {pct:0.55,reps:'3',warmup:true},{pct:0.75,reps:'2',warmup:true},
+      {pct:0.85,reps:'2'},{pct:0.90,reps:'1'},{pct:0.95,reps:'1'}]
+  };
   const sets=P[phaseKey]||P.hypertrophy;
-  if(!oneRepMax)return sets.map(s=>({reps:s.reps,pct:s.pct,weight:null}));
-  return sets.map(s=>({reps:s.reps,pct:s.pct,weight:Math.round(oneRepMax*s.pct/5)*5}));
+  if(!oneRepMax)return sets.map(s=>({reps:s.reps,pct:s.pct,weight:null,warmup:!!s.warmup,note:s.note||''}));
+  return sets.map(s=>{
+    let w=Math.round(oneRepMax*s.pct/5)*5;
+    // Barbell floor: an empty standard barbell is 45 lb — never prescribe less.
+    if(isBarbell) w=Math.max(45,w);
+    return {reps:s.reps,pct:s.pct,weight:w,warmup:!!s.warmup,note:s.note||''};
+  });
 }
-function renderPyramidTable(exercise,phaseKey){
-  if(!maxes)return'';const maxData=maxes[exercise];const oneRM=maxData?maxData.oneRM:null;
-  if(!oneRM)return `<div style="margin-top:0.4rem"><button onclick="openMaxModal('${exercise.replace(/'/g,"\\'")}','${phaseKey}')" style="font-size:0.72rem;color:var(--accent);background:rgba(45,122,95,0.1);border:1px solid rgba(45,122,95,0.3);border-radius:6px;padding:0.2rem 0.6rem;cursor:pointer">+ Enter max → get prescribed weights</button></div>`;
-  const sets=getPyramidSets(phaseKey,oneRM);
+function renderPyramidTable(exercise,phaseKey,curEquip){
+  if(!maxes)maxes={};
+  const maxData=maxes[exercise];
+  let oneRM=maxData?maxData.oneRM:null;
+  let estimated=false;
+  // Is this a barbell lift? (empty bar = 45 lb, so no prescribed weight can be below that)
+  const isBarbell=/^BB\b|barbell/i.test(curEquip||'') || (typeof MAXABLE_LIFTS!=='undefined' && MAXABLE_LIFTS[exercise] && (MAXABLE_LIFTS[exercise].equipment||[]).some(e=>/barbell|BB/i.test(e)));
+  // No tested max yet → fall back to a SAFE estimated 1RM from the user's profile,
+  // so every maxable lift still shows prescribed weights/sets/reps/rest.
+  if(!oneRM && typeof estimateMax==='function'){
+    let est=estimateMax(exercise);
+    // Barbell floor: the lightest prescribed load (power warm-up ≈ 40% of 1RM) must be ≥ 45 lb.
+    // So a barbell lift's estimated 1RM is raised to at least 45 / 0.40 = 112.5 lb.
+    if(est && isBarbell) est=Math.max(est, Math.ceil(45/0.40/5)*5); // → ≥115 lb
+    if(est){ oneRM=est; estimated=true; }
+  }
+  if(!oneRM) return `<div style="margin-top:0.4rem"><button onclick="openMaxModal('${exercise.replace(/'/g,"\\'")}','${phaseKey}')" style="font-size:0.72rem;color:var(--accent);background:rgba(45,122,95,0.1);border:1px solid rgba(45,122,95,0.3);border-radius:6px;padding:0.2rem 0.6rem;cursor:pointer">+ Enter max → get prescribed weights</button></div>`;
+  const sets=getPyramidSets(phaseKey,oneRM,isBarbell);
   // Auto-progression: if recent sessions felt easy, nudge toward adding weight
   let progressNote='';
   try{
@@ -15946,7 +16016,13 @@ function renderPyramidTable(exercise,phaseKey){
     const easyCount=completed.filter(c=>c.feel==='easy').length;
     if(easyCount>=2) progressNote=`<div style="font-size:0.68rem;color:#e67e22;font-weight:600;margin-top:0.3rem">📈 Your last sessions felt easy — try adding 5 lb or a rep where your form is solid.</div>`;
   }catch{}
-  return `<div style="margin-top:0.4rem"><div style="font-size:0.65rem;color:var(--muted);margin-bottom:0.2rem">1RM: <strong>${oneRM} lbs</strong> <button onclick="openMaxModal('${exercise.replace(/'/g,"\\'")}','${phaseKey}')" style="background:none;border:none;color:var(--accent);font-size:0.65rem;cursor:pointer;text-decoration:underline">edit</button></div><table style="width:100%;border-collapse:collapse;font-family:inherit"><thead><tr style="background:var(--surface2)"><th style="padding:0.25rem 0.5rem;font-size:0.65rem;font-weight:800;text-align:left;color:var(--muted)">SET</th><th style="padding:0.25rem 0.5rem;font-size:0.65rem;font-weight:800;text-align:left;color:var(--accent)">WEIGHT</th><th style="padding:0.25rem 0.5rem;font-size:0.65rem;font-weight:800;text-align:left;color:var(--muted)">REPS</th><th style="padding:0.25rem 0.5rem;font-size:0.65rem;font-weight:800;text-align:left;color:var(--muted)">%1RM</th></tr></thead><tbody>${sets.map((s,i)=>`<tr><td style="padding:0.25rem 0.5rem;font-size:0.75rem">Set ${i+1}</td><td style="padding:0.25rem 0.5rem;font-size:0.75rem;font-weight:700;color:var(--accent)">${s.weight} lbs</td><td style="padding:0.25rem 0.5rem;font-size:0.75rem">${s.reps} reps</td><td style="padding:0.25rem 0.5rem;font-size:0.7rem;color:var(--muted)">${Math.round(s.pct*100)}%</td></tr>`).join('')}</tbody></table>${progressNote}</div>`;
+  const REST_BY_PHASE={maxes:'3–5 min',strength:'2–5 min',hypertrophy:'60–90 sec',endurance:'30–60 sec',power:'2–3 min'};
+  const restTxt=REST_BY_PHASE[currentPhase]||REST_BY_PHASE.strength;
+  const restLabel=`<div style="font-size:0.65rem;color:var(--muted);margin-top:0.25rem">Rest: <strong>${restTxt}</strong> between sets</div>`;
+  const oneRMLabel=estimated
+    ? `Est. 1RM: <strong>${oneRM} lbs</strong> <span style="font-size:0.6rem;color:var(--muted);font-weight:600">(estimated)</span> <button onclick="openMaxModal('${exercise.replace(/'/g,"\\'")}','${phaseKey}')" style="background:none;border:none;color:var(--accent);font-size:0.65rem;cursor:pointer;text-decoration:underline">set your max</button>`
+    : `1RM: <strong>${oneRM} lbs</strong> <button onclick="openMaxModal('${exercise.replace(/'/g,"\\'")}','${phaseKey}')" style="background:none;border:none;color:var(--accent);font-size:0.65rem;cursor:pointer;text-decoration:underline">edit</button>`;
+  return `<div style="margin-top:0.4rem"><div style="font-size:0.65rem;color:var(--muted);margin-bottom:0.2rem">${oneRMLabel}</div><table style="width:100%;border-collapse:collapse;font-family:inherit"><thead><tr style="background:var(--surface2)"><th style="padding:0.25rem 0.5rem;font-size:0.65rem;font-weight:800;text-align:left;color:var(--muted)">SET</th><th style="padding:0.25rem 0.5rem;font-size:0.65rem;font-weight:800;text-align:left;color:var(--accent)">WEIGHT</th><th style="padding:0.25rem 0.5rem;font-size:0.65rem;font-weight:800;text-align:left;color:var(--muted)">REPS</th><th style="padding:0.25rem 0.5rem;font-size:0.65rem;font-weight:800;text-align:left;color:var(--muted)">%1RM</th></tr></thead><tbody>${sets.map((s,i)=>{const wu=s.warmup;const setLabel=wu?'Warm-up':('Set '+(i+1-sets.slice(0,i+1).filter(x=>x.warmup).length+ (sets.slice(0,i).filter(x=>x.warmup).length?0:0)));const wsNum=sets.slice(0,i+1).filter(x=>!x.warmup).length;return `<tr style="${wu?'opacity:0.7':''}"><td style="padding:0.25rem 0.5rem;font-size:0.75rem">${wu?'Warm-up':'Set '+wsNum}</td><td style="padding:0.25rem 0.5rem;font-size:0.75rem;font-weight:700;color:var(--accent)">${s.weight} lbs</td><td style="padding:0.25rem 0.5rem;font-size:0.75rem">${s.reps} reps${s.note?' · '+s.note:''}</td><td style="padding:0.25rem 0.5rem;font-size:0.7rem;color:var(--muted)">${Math.round(s.pct*100)}%</td></tr>`;}).join('')}</tbody></table>${restLabel}${progressNote}</div>`;
 }
 let _maxModalEx='',_maxModalPhase='';
 function openMaxModal(exercise,phaseKey){

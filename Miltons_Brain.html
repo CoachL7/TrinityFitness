@@ -2805,9 +2805,9 @@ const PHASES = {
     label: 'Power',
     chip: 'chip-power',
     chipLabel: 'POWER',
-    info: 'Power phase: 3 sets × 3–6 reps at 30–60% of 1RM with maximum speed/intent. Rest 2–5 min. Build explosiveness for sport.',
-    pct: '30%–60%',
-    sets: '3', reps: '3–6',
+    info: 'Power phase: 3 working sets × 3–5 reps at 45–55% of 1RM moved with maximum speed/intent. Rest 2–5 min (full recovery). Build explosiveness for sport.',
+    pct: '45%–55%',
+    sets: '3', reps: '3–5',
   }
 };
 
@@ -9189,6 +9189,65 @@ function generateCoachReply(q) {
     const sched=getUserSchedule(); const dow=new Date().getDay();
     sched[dow]='recovery'; setUserSchedule(sched); apply();
     return `${hi}today is now a recovery day — I'll guide you through mobility and soft-tissue work for the muscles you've trained recently. Check the Recovery tab for your session.`;
+  }
+  // "Today isn't a game day" / "remove the competition from today"
+  if (/(today (is|isn.?t|is not)).*(game|competition|comp|meet|race|match) ?day|(remove|delete|clear|cancel|take off).*(game|competition|comp|meet|race|match).*(today)|no (game|competition|comp|meet) today/.test(t)
+      && !/add|schedule|set|create/.test(t)){
+    try{
+      const now=new Date(); const todayISO=new Date(now.getFullYear(),now.getMonth(),now.getDate()).toISOString().slice(0,10);
+      let removed=false;
+      if(typeof getCompetitionDates==='function' && getCompetitionDates().some(c=>c.date===todayISO) && typeof removeCompetitionDate==='function'){
+        removeCompetitionDate(todayISO); removed=true;
+      }
+      if(typeof updateWorkoutsPage==='function') updateWorkoutsPage();
+      if(typeof renderHomePage==='function') renderHomePage();
+      return removed ? `${hi}got it — I removed the competition from today. Your training day is back to normal.`
+                     : `${hi}there's no competition on today in your calendar now — you're all set to train.`;
+    }catch(e){}
+  }
+  // Move / reschedule a workout to today (missed it on its scheduled day) and shift the sequence.
+  // e.g. "move Tuesday's workout 3 to today", "I missed my workout, do it today and shift my calendar",
+  //      "reschedule today", "shift everything since I couldn't train".
+  if (/(move|reschedul|shift|missed|couldn.?t|didn.?t|skip).*(workout|session|calendar|training|today)|do (workout|it) today|pick up (where|today)/.test(t)
+      && !/competition|compete|game|meet|race|tournament/.test(t)){
+    try{
+      const sched=getUserSchedule(); const now=new Date();
+      const t0=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+      // If a competition was wrongly placed on TODAY, remove it (the user wants to train, not compete).
+      let removedComp=false;
+      try{
+        const todayISO=t0.toISOString().slice(0,10);
+        if(typeof getCompetitionDates==='function'){
+          const hadToday=getCompetitionDates().some(c=>c.date===todayISO);
+          if(hadToday && typeof removeCompetitionDate==='function'){ removeCompetitionDate(todayISO); removedComp=true; }
+        }
+      }catch(e){}
+      // make today a workout day if it isn't
+      let madeToday=false;
+      if((sched[t0.getDay()]||'rest')!=='workout'){ sched[t0.getDay()]='workout'; setUserSchedule(sched); madeToday=true; }
+      // Figure out which workout number they want today: an explicit number, else the next in sequence.
+      let targetIdx=null;
+      const numMatch=t.match(/(?:workout|session|#)\s*(\d{1,2})/);
+      const prog=(typeof getActiveProgram==='function')?getActiveProgram():null;
+      const progLen=(prog&&prog.length)?prog.length:12;
+      if(numMatch){ targetIdx=(parseInt(numMatch[1])-1); }
+      else if(typeof getSequencePin==='function'){
+        // next scheduled workout index (the one they were due to do next)
+        const probe=new Date(t0);
+        for(let k=0;k<400;k++){ const idx=getSessionIndexForDate(probe); if(idx!==null){ targetIdx=idx; break; } probe.setDate(probe.getDate()+1); }
+      }
+      if(targetIdx===null) targetIdx=0;
+      // Pin that workout to today, so the sequence continues from here on the user's training days.
+      if(typeof setSequencePin==='function'){
+        setSequencePin(new Date(t0.getFullYear(),t0.getMonth(),t0.getDate()).toISOString().slice(0,10), targetIdx);
+      }
+      if(typeof updateWorkoutsPage==='function') updateWorkoutsPage();
+      if(typeof renderHomePage==='function') renderHomePage();
+      const num=((targetIdx%progLen)+progLen)%progLen+1;
+      return `${hi}done — I moved Workout ${num} to today${madeToday?' (and made today a training day)':''}${removedComp?' and cleared the competition that was wrongly on today':''}, and shifted the rest of your calendar to follow in order from here. Nothing was skipped. Head to the Workouts tab.`;
+    }catch(e){
+      return `${hi}I tried to reschedule but hit a snag — you can also set it yourself in Edit Program under "Next workout number." `;
+    }
   }
   // Make today a training day
   if (/(make|set|mark).*(training day|workout day|train today|workout today)|today.*(training|workout) day|i want to (train|work ?out) today/.test(t)){

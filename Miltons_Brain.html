@@ -1534,6 +1534,7 @@
   <div class="page active" id="page-home">
     <div class="container" style="padding-top:0.75rem">
       <div id="home-greeting" style="margin-bottom:1rem"></div>
+      <div id="home-season-card" style="margin-bottom:1rem"></div>
       <div id="home-streak-hero"></div>
       <div id="home-perfscore-wrap" class="card" style="margin-bottom:1rem;padding:1rem;display:none">
         <div style="font-size:0.78rem;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;color:var(--accent);margin-bottom:0.7rem">⚡ Performance Score</div>
@@ -2025,7 +2026,13 @@
             </div>
           </div>
           <div class="recovery-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:0.75rem;margin-bottom:1rem">
-            <div><div style="font-size:0.62rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.3rem">😴 Sleep (hours)</div><input type="number" inputmode="decimal" id="inp-sleep-hours" placeholder="e.g. 7.5" step="0.5" oninput="saveRecoveryLog()" style="margin-bottom:0"></div>
+            <div style="grid-column:1 / -1"><div style="font-size:0.62rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.3rem">😴 Sleep</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:0.5rem;align-items:end">
+                <div><div style="font-size:0.58rem;color:var(--muted);margin-bottom:0.2rem">Bedtime</div><input type="time" id="inp-sleep-bed" oninput="calcSleepHours()" style="margin-bottom:0"></div>
+                <div><div style="font-size:0.58rem;color:var(--muted);margin-bottom:0.2rem">Wake</div><input type="time" id="inp-sleep-wake" oninput="calcSleepHours()" style="margin-bottom:0"></div>
+                <div><div style="font-size:0.58rem;color:var(--muted);margin-bottom:0.2rem">Total (hrs)</div><input type="number" inputmode="decimal" id="inp-sleep-hours" placeholder="auto" step="0.1" oninput="markSleepEdited();saveRecoveryLog()" style="margin-bottom:0;width:72px"></div>
+              </div>
+              <div style="font-size:0.58rem;color:var(--muted);margin-top:0.25rem">Total auto-calculates from bedtime & wake — edit it directly to override.</div></div>
             <div><div style="font-size:0.62rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.3rem">💓 HRV (ms)</div><input type="number" inputmode="numeric" id="inp-hrv" placeholder="e.g. 65" oninput="saveRecoveryLog()" style="margin-bottom:0"></div>
             <div><div style="font-size:0.62rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.3rem">❤️ Resting HR (bpm)</div><input type="number" inputmode="numeric" id="inp-resting-hr" placeholder="e.g. 55" oninput="saveRecoveryLog()" style="margin-bottom:0"></div>
             <div><div style="font-size:0.62rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.3rem">🔥 Strain (yesterday)</div><input type="number" inputmode="decimal" id="inp-strain" placeholder="e.g. 12" step="0.1" oninput="saveRecoveryLog()" style="margin-bottom:0"></div>
@@ -2161,12 +2168,20 @@
         <button class="tab-btn active" onclick="showAccountTab('overview',this)">Overview</button>
         <button class="tab-btn" onclick="showAccountTab('signup',this)">Create Account</button>
         <button class="tab-btn" onclick="showAccountTab('data',this)">My Data</button>
-        <button class="tab-btn" onclick="showAccountTab('subscription',this)">Subscription</button>
+        <button class="tab-btn" onclick="showAccountTab('healthdata',this)">🩺 Health Data</button>
         <button class="tab-btn" onclick="showAccountTab('appearance',this)">🎨 Appearance</button>
         <button class="tab-btn" onclick="showAccountTab('roadmap',this)">🚀 Coming Soon</button>
       </div>
       <div id="acct-appearance" style="display:none"><div class="card" style="margin-bottom:1rem"><div class="card-title" style="margin-bottom:0.75rem">🌙 Theme</div><button id="theme-toggle-btn" class="btn" onclick="toggleTheme()" style="width:100%;padding:0.9rem">🌙 Switch to Dark Mode</button></div>
       <div class="card" style="margin-bottom:1rem"><div class="card-title" style="margin-bottom:0.75rem">🔔 Notifications</div><div id="notif-toggle-area"></div></div></div>
+      <div id="acct-healthdata" style="display:none">
+        <div class="card" style="margin-bottom:1rem">
+          <div class="card-title" style="margin-bottom:0.5rem">🩺 Health Data Tracker</div>
+          <p style="color:var(--muted);font-size:0.85rem;margin-bottom:0.75rem">Log wearables, maxes, movement screens, bloodwork, body comp, healthcare vitals, and subjective check-ins. Milton uses these to autoregulate your programming.</p>
+          <div id="hd-controls"></div>
+        </div>
+        <div id="hd-body"></div>
+      </div>
       <div id="acct-roadmap" style="display:none">
         <div class="card" style="margin-bottom:1rem">
           <div class="card-title" style="margin-bottom:0.5rem">🚀 On the Roadmap</div>
@@ -2204,13 +2219,7 @@
         <!-- Owner mode indicator -->
         <div id="owner-mode-card"></div>
 
-        <!-- Trial status -->
-        <div class="card" style="margin-bottom:1rem;text-align:center">
-          <div class="card-title">Free Trial Status</div>
-          <div class="days-left" id="days-remaining">30</div>
-          <div style="color:var(--muted);font-size:0.83rem;margin-bottom:1rem">days remaining in your free trial</div>
-          <div class="alert alert-success" style="text-align:left;margin-bottom:0">Your first 30 days are completely free. No credit card required to get started.</div>
-        </div>
+        <!-- Trial status removed -->
 
         <!-- Data warning -->
         <div class="alert alert-warning" style="margin-bottom:1rem">
@@ -2451,6 +2460,39 @@
 // STATE
 // ==============================
 let profile = JSON.parse(localStorage.getItem('ffp_profile') || '{}');
+// ── Calan's tested maxes (Maxes tab) — force-set so they always appear ──
+(function(){
+  try {
+    var existing = {};
+    try { existing = JSON.parse(localStorage.getItem('ffp_maxes') || '{}'); } catch(e){ existing = {}; }
+    var today = new Date().toISOString().slice(0,10);
+    var mine = {
+      'Back Squat': 300, 'Stiff Leg Deadlift (SLDL)': 362, 'Front Squat': 213,
+      'Good Morning': 170, 'Shoulder Press': 145, 'SA Press': 60,
+      'Chest Press': 69, 'SA Bench Press': 62, 'Bicep Curl': 80,
+      'Zottman Curl': 53, 'DB Snatch': 67, 'Hammer Curl': 67,
+      'Hamstring Curl': 160, 'Clean High Pull': 180, 'Side Bend': 86
+    };
+    // Force-set on the 'v2' seed. This runs once per browser; after that your own
+    // edits are preserved (change 'v2' to 'v3' anytime you want to re-apply).
+    if (localStorage.getItem('ffp_calan_maxes_seeded') !== 'v2') {
+      Object.keys(mine).forEach(function(lift){
+        existing[lift] = { weight: mine[lift], reps: 1, oneRM: mine[lift], date: today };
+      });
+      localStorage.setItem('ffp_maxes', JSON.stringify(existing));
+      localStorage.setItem('ffp_calan_maxes_seeded', 'v2');
+    }
+    // Migrate any previously-saved 'Stiff Leg Deadlift' max to the renamed key.
+    try {
+      var _mxSL = JSON.parse(localStorage.getItem('ffp_maxes')||'{}');
+      if(_mxSL['Stiff Leg Deadlift'] && !_mxSL['Stiff Leg Deadlift (SLDL)']){
+        _mxSL['Stiff Leg Deadlift (SLDL)'] = _mxSL['Stiff Leg Deadlift'];
+        delete _mxSL['Stiff Leg Deadlift'];
+        localStorage.setItem('ffp_maxes', JSON.stringify(_mxSL));
+      }
+    } catch(e){}
+  } catch(e) {}
+})();
 let maxes = JSON.parse(localStorage.getItem('ffp_maxes') || '{}');
 let trialStart = localStorage.getItem('ffp_trial_start');
 let wantsPlyo = JSON.parse(localStorage.getItem('ffp_wants_plyo') !== null ? localStorage.getItem('ffp_wants_plyo') : 'true');
@@ -2672,7 +2714,7 @@ const EQUIPMENT_CATEGORIES = [
 ];
 const MAXABLE_LIFTS = {
   'Back Squat': {max: null, equipment: ['Barbell','Squat Rack'], bodyweight_sub: 'Bodyweight Squat'},
-  'Stiff Leg Deadlift': {max: null, equipment: ['Barbell'], bodyweight_sub: 'Romanian Deadlift (BW)'},
+  'Stiff Leg Deadlift (SLDL)': {max: null, equipment: ['Barbell'], bodyweight_sub: 'Romanian Deadlift (BW)'},
   'Deadlift': {max: null, equipment: ['Barbell'], bodyweight_sub: 'Nordic Hamstring Curl'},
   'Bench Press': {max: null, equipment: ['Barbell','Bench'], bodyweight_sub: 'Push-Up'},
   'Incline Bench Press': {max: null, equipment: ['Barbell','Bench'], bodyweight_sub: 'Incline Push-Up'},
@@ -2690,6 +2732,39 @@ const MAXABLE_LIFTS = {
   'SA Bench Press': {max: null, equipment: ['Dumbbell','Bench'], bodyweight_sub: 'Diamond Push-Up'},
   'Hip Thruster': {max: null, equipment: ['Barbell','Bench'], bodyweight_sub: 'Glute Bridge'},
   'Good Morning': {max: null, equipment: ['Barbell'], bodyweight_sub: 'Good Morning (BW)'},
+  'Clean': {max: null, equipment: ['Barbell'], bodyweight_sub: 'Kettlebell Swing'},
+  'Split Jerk': {max: null, equipment: ['Barbell'], bodyweight_sub: 'Dumbbell Push Press'},
+  'Snatch': {max: null, equipment: ['Barbell'], bodyweight_sub: 'Kettlebell Swing'},
+  'Clean Jump Shrug': {max: null, equipment: ['Barbell'], bodyweight_sub: 'Jump Shrug (BW)'},
+  'DB Snatch': {max: null, equipment: ['Dumbbell']},
+  'Pistol Squat': {max: null, equipment: ['Bodyweight','Dumbbell']},
+  'SL Squat': {max: null, equipment: ['Bodyweight','Dumbbell']},
+  'Linear Lunge': {max: null, equipment: ['Dumbbell','Barbell']},
+  'SL RDL': {max: null, equipment: ['Dumbbell','Barbell']},
+  'Back Extension': {max: null, equipment: ['Bodyweight','Barbell']},
+  'Hip Extension': {max: null, equipment: ['Bodyweight','Barbell']},
+  'SA Kneeling Press': {max: null, equipment: ['Dumbbell']},
+  'Dips': {max: null, equipment: ['Bodyweight']},
+  'Standing Row': {max: null, equipment: ['Cable Machine','Dumbbell']},
+  'Split Stance Row': {max: null, equipment: ['Dumbbell']},
+  'SA Bench Row': {max: null, equipment: ['Dumbbell']},
+  'Inverted Row': {max: null, equipment: ['Bodyweight']},
+  'Pull-Up/Chin-Up': {max: null, equipment: ['Bodyweight']},
+  'Pullover': {max: null, equipment: ['Dumbbell']},
+  'Bicep Curl': {max: null, equipment: ['Dumbbell','Barbell']},
+  'Hammer Curl': {max: null, equipment: ['Dumbbell']},
+  'Zottman Curl': {max: null, equipment: ['Dumbbell']},
+  'Reverse Curl': {max: null, equipment: ['Dumbbell','Barbell']},
+  'Tricep Extension': {max: null, equipment: ['Dumbbell','Cable Machine']},
+  'Lateral Raise': {max: null, equipment: ['Dumbbell']},
+  'Front Raise': {max: null, equipment: ['Dumbbell']},
+  'Reverse Fly': {max: null, equipment: ['Dumbbell']},
+  'Chest Fly': {max: null, equipment: ['Dumbbell']},
+  'Cable Fly': {max: null, equipment: ['Cable Machine']},
+  'Leg Extension': {max: null, equipment: ['Machine']},
+  'Calf Press': {max: null, equipment: ['Machine']},
+  'Hamstring Curl': {max: null, equipment: ['Machine']},
+  'Hip Add/Abd': {max: null, equipment: ['Machine']},
 };
 
 // Phase data
@@ -3050,49 +3125,97 @@ const STYLE_PROGRAMS = {
     ]},
   ],
   prenatal: [
-    { id:'pn1', num:1, label:'GENTLE FULL BODY', type:'STRENGTH', warmup:_wu('Light walk'), sections:[
-      {head:'Lower', exercise:'Supported Squat', equipment:'Bodyweight', note:'2–3 sets · 10–12 reps · hold support'},
+    // ── FIRST TRIMESTER (weeks 1–13): maintain baseline, build habits ──
+    { id:'pn-t1a', num:1, label:'T1 · FULL BODY STRENGTH', type:'STRENGTH', trimester:1, warmup:_wu('5-min easy walk'), sections:[
+      {head:'Lower', exercise:'Goblet Squat', equipment:'DB', note:'2–3 sets · 10–12 reps · light–moderate (RPE 12–13)'},
       {head:'Push', exercise:'Incline Push-Up', equipment:'Bodyweight', note:'2–3 sets · 8–12 reps'},
       {head:'Pull', exercise:'Seated Row', equipment:'Band', note:'3 sets · 12–15 reps'},
-      {head:'Glutes', exercise:'Glute Bridge', equipment:'Bodyweight', note:'3 sets · 12–15 reps · avoid late-term supine'},
-      {head:'Core', exercise:'Bird Dog', equipment:'Bodyweight', note:'3 sets · 8 each side'},
+      {head:'Glutes', exercise:'Glute Bridge', equipment:'Bodyweight', note:'3 sets · 12–15 reps'},
+      {head:'Pelvic Floor', exercise:'Kegel / Pelvic Floor Engagement', equipment:'Bodyweight', note:'2 sets · 10 slow holds (5s) + 10 quick'},
+      {head:'Core', exercise:'Bird Dog', equipment:'Bodyweight', note:'2 sets · 8 each side'},
     ]},
-    { id:'pn2', num:2, label:'STRENGTH & STABILITY', type:'STRENGTH', warmup:_wu('Light walk'), sections:[
-      {head:'Lower', exercise:'Sit-to-Stand', equipment:'Bodyweight', note:'3 sets · 10 reps'},
+    { id:'pn-t1b', num:2, label:'T1 · AEROBIC + MOBILITY', type:'CONDITIONING', trimester:1, warmup:_wu('5-min easy walk'), sections:[
+      {head:'Aerobic', exercise:'Brisk Walk or Stationary Bike', equipment:'Bodyweight', note:'20–30 min · conversational pace (RPE 12–13)'},
+      {head:'Mobility', exercise:'Cat-Cow', equipment:'Bodyweight', note:'8 slow rounds'},
+      {head:'Mobility', exercise:'Hip Flexor Stretch', equipment:'Bodyweight', note:'30s each side'},
+      {head:'Pelvic Floor', exercise:'Diaphragmatic Breathing', equipment:'Bodyweight', note:'3 sets · 8–10 breaths'},
+    ]},
+    // ── SECOND TRIMESTER (weeks 14–27): avoid supine, widen stance, reduce impact ──
+    { id:'pn-t2a', num:3, label:'T2 · STRENGTH (NO SUPINE)', type:'STRENGTH', trimester:2, warmup:_wu('5-min easy walk'), sections:[
+      {head:'Lower', exercise:'Supported Squat', equipment:'Bodyweight', note:'3 sets · 10–12 reps · hold support as needed'},
       {head:'Lower', exercise:'Side-Lying Leg Lift', equipment:'Bodyweight', note:'3 sets · 12 each side'},
-      {head:'Push', exercise:'Shoulder Press', equipment:'DB', note:'3 sets · 10–12 reps · light'},
+      {head:'Push', exercise:'Standing Shoulder Press', equipment:'DB', note:'3 sets · 10–12 reps · light'},
       {head:'Pull', exercise:'Band Pull-Apart', equipment:'Band', note:'3 sets · 15 reps'},
-      {head:'Core', exercise:'Standing Pelvic Tilt', equipment:'Bodyweight', note:'3 sets · 10 reps'},
+      {head:'Pelvic Floor', exercise:'Kegel / Pelvic Floor Engagement', equipment:'Bodyweight', note:'2 sets · 10 holds'},
+      {head:'Core', exercise:'Standing Pelvic Tilt', equipment:'Bodyweight', note:'3 sets · 10 reps · no supine core'},
     ]},
-    { id:'pn3', num:3, label:'MOBILITY & PELVIC FLOOR', type:'MOBILITY', warmup:_wu('Light walk'), sections:[
-      {head:'Pelvic Floor', exercise:'Kegel / Pelvic Floor Engagement', equipment:'Bodyweight', note:'3 sets · 10 holds'},
-      {head:'Mobility', exercise:'Cat-Cow', equipment:'Bodyweight', note:'10 slow rounds'},
-      {head:'Hips', exercise:'Birth Ball Hip Circles', equipment:'Bodyweight', note:'2 min each direction'},
-      {head:'Hips', exercise:'Supported Deep Squat Hold', equipment:'Bodyweight', note:'hold 30–60 sec'},
-      {head:'Cooldown', exercise:'Side-Lying Relaxation', equipment:'Bodyweight', note:'5 min'},
+    { id:'pn-t2b', num:4, label:'T2 · STABILITY + PELVIC FLOOR', type:'MOBILITY', trimester:2, warmup:_wu('5-min easy walk'), sections:[
+      {head:'Glutes', exercise:'Quadruped Hip Extension', equipment:'Bodyweight', note:'3 sets · 10 each side'},
+      {head:'Core', exercise:'Bird Dog', equipment:'Bodyweight', note:'3 sets · 8 each side · no doming'},
+      {head:'Pelvic Floor', exercise:'Deep Squat Breathing', equipment:'Bodyweight', note:'2 sets · 8 breaths, relax floor on inhale'},
+      {head:'Mobility', exercise:'Thoracic Opener', equipment:'Bodyweight', note:'2 min'},
+      {head:'Aerobic', exercise:'Walk or Swim', equipment:'Bodyweight', note:'20–30 min · low impact'},
+    ]},
+    // ── THIRD TRIMESTER (weeks 28–40): mobility, pelvic floor, birth prep, lighter loads ──
+    { id:'pn-t3a', num:5, label:'T3 · GENTLE STRENGTH + PREP', type:'MOBILITY', trimester:3, warmup:_wu('5-min easy walk'), sections:[
+      {head:'Lower', exercise:'Sit-to-Stand', equipment:'Bodyweight', note:'2–3 sets · 8–10 reps'},
+      {head:'Lower', exercise:'Supported Sumo Squat', equipment:'Bodyweight', note:'2 sets · 8–10 reps · wide stance'},
+      {head:'Pull', exercise:'Seated Row', equipment:'Band', note:'2–3 sets · 12–15 reps'},
+      {head:'Pelvic Floor', exercise:'Pelvic Floor Down-Training (relax)', equipment:'Bodyweight', note:'birth prep · 5 min guided relaxation'},
+      {head:'Mobility', exercise:'Cat-Cow', equipment:'Bodyweight', note:'8 slow rounds'},
+    ]},
+    { id:'pn-t3b', num:6, label:'T3 · MOBILITY + COMFORT', type:'MOBILITY', trimester:3, warmup:_wu('5-min easy walk'), sections:[
+      {head:'Mobility', exercise:'Child\'s Pose (supported)', equipment:'Bodyweight', note:'60–90s'},
+      {head:'Mobility', exercise:'Hip Circles on Ball', equipment:'Bodyweight', note:'2 min each direction'},
+      {head:'Mobility', exercise:'Side-Lying Thoracic Rotation', equipment:'Bodyweight', note:'8 each side'},
+      {head:'Pelvic Floor', exercise:'Diaphragmatic Breathing', equipment:'Bodyweight', note:'5 min'},
+      {head:'Aerobic', exercise:'Easy Walk', equipment:'Bodyweight', note:'15–25 min as tolerated'},
     ]},
   ],
   postnatal: [
-    { id:'po1', num:1, label:'RECONNECT & BREATHE', type:'RECOVERY', warmup:_wu('Light walk'), sections:[
-      {head:'Core', exercise:'Diaphragmatic Breathing', equipment:'Bodyweight', note:'3 sets · 8–10 breaths'},
-      {head:'Pelvic Floor', exercise:'Pelvic Floor Connection', equipment:'Bodyweight', note:'3 sets · 10 gentle holds'},
-      {head:'Core', exercise:'Heel Slide', equipment:'Bodyweight', note:'2 sets · 8 each side'},
+    // ── PHASE 1 · 0–6 WEEKS (recovery — await medical clearance before loading) ──
+    { id:'po-p1a', num:1, label:'0–6wk · RECONNECT & BREATHE', type:'RECOVERY', phase:'0-6wk', warmup:_wu('Gentle walk'), sections:[
+      {head:'Breathing', exercise:'Diaphragmatic Breathing', equipment:'Bodyweight', note:'3 sets · 8–10 breaths · rib expansion'},
+      {head:'Pelvic Floor', exercise:'Pelvic Floor Connection', equipment:'Bodyweight', note:'3 sets · 10 gentle contractions with exhale'},
+      {head:'Core', exercise:'Heel Slide', equipment:'Bodyweight', note:'2 sets · 8 each side · no doming'},
       {head:'Mobility', exercise:'Cat-Cow', equipment:'Bodyweight', note:'8 slow rounds'},
-      {head:'Glutes', exercise:'Glute Bridge', equipment:'Bodyweight', note:'2 sets · 10 reps'},
+      {head:'Glutes', exercise:'Glute Bridge', equipment:'Bodyweight', note:'2 sets · 10 reps · gentle'},
     ]},
-    { id:'po2', num:2, label:'REBUILD STRENGTH', type:'STRENGTH', warmup:_wu('Light walk'), sections:[
+    { id:'po-p1b', num:2, label:'0–6wk · GENTLE MOBILITY', type:'MOBILITY', phase:'0-6wk', warmup:_wu('Gentle walk'), sections:[
+      {head:'Posture', exercise:'Seated Thoracic Opener', equipment:'Bodyweight', note:'2 min · relieve feeding posture'},
+      {head:'Mobility', exercise:'Neck & Shoulder Rolls', equipment:'Bodyweight', note:'1–2 min'},
+      {head:'Pelvic Floor', exercise:'Connection Breath (TA + floor)', equipment:'Bodyweight', note:'3 sets · 8 breaths'},
+      {head:'Aerobic', exercise:'Easy Walk', equipment:'Bodyweight', note:'10–20 min as tolerated · stroller ok'},
+    ]},
+    // ── PHASE 2 · 6–12 WEEKS (after clearance — rebuild foundation, screen for diastasis) ──
+    { id:'po-p2a', num:3, label:'6–12wk · REBUILD FOUNDATION', type:'STRENGTH', phase:'6-12wk', warmup:_wu('5-min walk'), sections:[
       {head:'Lower', exercise:'Bodyweight Squat', equipment:'Bodyweight', note:'3 sets · 10–12 reps'},
       {head:'Push', exercise:'Incline Push-Up', equipment:'Bodyweight', note:'3 sets · 8–10 reps'},
       {head:'Pull', exercise:'Band Row', equipment:'Band', note:'3 sets · 12–15 reps'},
-      {head:'Core', exercise:'Dead Bug', equipment:'Bodyweight', note:'3 sets · 8 each side · avoid doming'},
+      {head:'Core', exercise:'Dead Bug', equipment:'Bodyweight', note:'3 sets · 8 each side · watch for doming/coning'},
       {head:'Glutes', exercise:'Hip Thrust', equipment:'Bodyweight', note:'3 sets · 12 reps'},
     ]},
-    { id:'po3', num:3, label:'CORE & FULL BODY', type:'STRENGTH', warmup:_wu('Light walk'), sections:[
-      {head:'Lower', exercise:'Goblet Squat', equipment:'DB', note:'3 sets · 10 reps · light'},
-      {head:'Push', exercise:'DB Shoulder Press', equipment:'DB', note:'3 sets · 10 reps'},
-      {head:'Pull', exercise:'Single-Arm Row', equipment:'DB', note:'3 sets · 10 each side'},
-      {head:'Core', exercise:'Side Plank (knees)', equipment:'Bodyweight', note:'3 sets · 20–30 sec each'},
+    { id:'po-p2b', num:4, label:'6–12wk · CORE & STABILITY', type:'STRENGTH', phase:'6-12wk', warmup:_wu('5-min walk'), sections:[
+      {head:'Core', exercise:'Side Plank (knees)', equipment:'Bodyweight', note:'3 sets · 15–25 sec each · progress from knees'},
+      {head:'Lower', exercise:'Split Squat (supported)', equipment:'Bodyweight', note:'3 sets · 8 each side'},
+      {head:'Pull', exercise:'Single-Arm Row', equipment:'DB', note:'3 sets · 10 each side · light'},
+      {head:'Pelvic Floor', exercise:'Pelvic Floor + Load Coordination', equipment:'Bodyweight', note:'exhale/engage on effort'},
       {head:'Mobility', exercise:'Thoracic Opener', equipment:'Bodyweight', note:'2 min'},
+    ]},
+    // ── PHASE 3 · 12 WEEKS+ (progressive return; impact only if pelvic floor/DR resolved) ──
+    { id:'po-p3a', num:5, label:'12wk+ · PROGRESSIVE STRENGTH', type:'STRENGTH', phase:'12wk+', warmup:_wu('5-min walk'), sections:[
+      {head:'Lower', exercise:'Goblet Squat', equipment:'DB', note:'3 sets · 10 reps · progressive load'},
+      {head:'Push', exercise:'DB Shoulder Press', equipment:'DB', note:'3 sets · 10 reps'},
+      {head:'Hinge', exercise:'Dumbbell Romanian Deadlift', equipment:'DB', note:'3 sets · 10 reps'},
+      {head:'Pull', exercise:'Single-Arm Row', equipment:'DB', note:'3 sets · 10 each side'},
+      {head:'Core', exercise:'Side Plank', equipment:'Bodyweight', note:'3 sets · 30–45 sec each'},
+    ]},
+    { id:'po-p3b', num:6, label:'12wk+ · FULL BODY + CONDITIONING', type:'STRENGTH', phase:'12wk+', warmup:_wu('5-min walk'), sections:[
+      {head:'Lower', exercise:'Walking Lunge', equipment:'DB', note:'3 sets · 10 each leg'},
+      {head:'Push', exercise:'Push-Up', equipment:'Bodyweight', note:'3 sets · 8–12 reps'},
+      {head:'Pull', exercise:'Lat Pulldown', equipment:'Cable', note:'3 sets · 10–12 reps'},
+      {head:'Core', exercise:'Pallof Press', equipment:'Cable', note:'3 sets · 10 each side'},
+      {head:'Conditioning', exercise:'Intervals (impact only if cleared)', equipment:'Bodyweight', note:'6–8 × 30s · low-impact unless pelvic floor/DR resolved'},
     ]},
   ],
   hyrox: [
@@ -3460,7 +3583,7 @@ const WORKOUT_STRUCTURE = [
     "sections": [
       {
         "head": "Hinge",
-        "exercise": "Stiff Leg Deadlift",
+        "exercise": "Stiff Leg Deadlift (SLDL)",
         "equipment": "BB",
         "note": ""
       },
@@ -4142,7 +4265,7 @@ const EXERCISE_DATABASE = {
       // Squat Pattern
       'Back Squat','Front Squat','Overhead Squat','Box Squat','Pause Squat','Tempo Squat','Bulgarian Split Squat','Goblet Squat','Zercher Squat','Safety Bar Squat','Hack Squat','Landmine Squat','Cyclist Squat','Pistol Squat','Shrimp Squat','Step-Up','Lateral Step-Up','Rear-Foot Elevated Split Squat',
       // Hinge Pattern
-      'Conventional Deadlift','Sumo Deadlift','Romanian Deadlift (RDL)','Single-Leg RDL','Stiff-Leg Deadlift','Trap Bar / Hex Bar Deadlift','Deficit Deadlift','Rack Pull','Good Morning','Hip Hinge','Kettlebell Swing','American Kettlebell Swing','Single-Arm KB Swing','Snatch-Grip Deadlift',
+      'Deadlift','Sumo Deadlift','Romanian Deadlift (RDL)','Single-Leg RDL','Stiff-Leg Deadlift','Trap Bar / Hex Bar Deadlift','Deficit Deadlift','Rack Pull','Good Morning','Hip Hinge','Kettlebell Swing','American Kettlebell Swing','Single-Arm KB Swing','Snatch-Grip Deadlift',
       // Press Pattern
       'Barbell Bench Press','Incline Barbell Bench Press','Decline Barbell Bench Press','Dumbbell Bench Press','Incline Dumbbell Press','Decline Dumbbell Press','Single-Arm Dumbbell Press','Floor Press','Barbell Overhead Press','Dumbbell Overhead Press','Arnold Press','Push Press','Jerk','Z Press','Landmine Press','Single-Arm Landmine Press','Seated Overhead Press',
       // Pull Pattern
@@ -4604,11 +4727,7 @@ const PROGRAM_STYLES = {
 const TF_REFERENCE = {"trainingLoads":[{"type":"Acceleration","intensity":"1.0","distance":"10m-30m","volume":"150m-360m","recovery":"2min-6min","example":"Resisted Accelerations, Sled Pulls, Uphill, Stick Drills, Block Starts "},{"type":"Maximum Velocity","intensity":"1.0","distance":"10m-150m","volume":"120m-450m","recovery":"3min-10min","example":"Floating, Assisted Sprints, Pulleys, Bungees, Downhill (light), Flys, In and Outs"},{"type":"Short Speed Endurance","intensity":"90%-95%","distance":"30m-80m","volume":"120m-320m","recovery":"1min-3min","example":"10x60m@90% R:2min"},{"type":"Long Speed Endurance","intensity":"90%-95%","distance":"80m-450m (>race dis)","volume":"300m-900m","recovery":"3min-8min","example":"5x120m@95% R:5min / 2x450m@90% R:8min"},{"type":"Extensive Tempo","intensity":"70%-75%","distance":">100m","volume":"1200m-1800m","recovery":"15sec-3min","example":"8x200m@70% R:2min / 16x100m@75% R:1min"},{"type":"Intensive Tempo","intensity":"80%-85%","distance":">80m","volume":"800m-1800m","recovery":"30sec-6min","example":"7x150m@85% R:3min / 4x250m@80% R:3min"},{"type":"Special Endurance 1","intensity":"90%-95%","distance":"80m-300m","volume":"300m-1000m","recovery":">8min","example":"60m-90m-120m-150m@95% R:10min / 4x150m@95% R:12min"},{"type":"Special Endurance 2","intensity":"95%-100%","distance":"60m-300m","volume":"180m-900m","recovery":">10min","example":"3x150m@100% R:15min / 2xFly100m@100% R:15min (build to this by CCP)"}],"phases":[{"phase":"GPP (General Prep Phase)","emphasis":["Acceleration","Max Velocity","Extensive Tempo"]},{"phase":"SPP (Special Prep Phase)","emphasis":["Acceleration","Max Velocity","Intensive Tempo"]},{"phase":"CPP (Comp Prep Phase)","emphasis":["Acceleration","Max Velocity","Speed Endurance"]},{"phase":"CHPP (Champ Prep Phase)","emphasis":["Acceleration","Max Velocity","Special Endurance"]}],"gppMicrocycle":[{"day":"Monday","weeks":["Acceleration","Acceleration","Plyo","Acceleration"]},{"day":"Tuesday","weeks":["Rest&Recovery","Rest&Recovery","Rest&Recovery","Rest&Recovery"]},{"day":"Wednesday","weeks":["Plyos","Max Velocity","Acceleration","Max Velocity"]},{"day":"Thursday","weeks":["Rest&Recovery","Rest&Recovery","Rest&Recovery","Rest&Recovery"]},{"day":"Friday","weeks":["Extensive Tempo","Stadium","Extensive Tempo","Pool"]}],"sppMicrocycle":[{"day":"Monday","weeks":["Acceleration","Acceleration","Circuit","Acceleration"]},{"day":"Tuesday","weeks":["Rest&Recovery","Rest&Recovery","Rest&Recovery","Rest&Recovery"]},{"day":"Wednesday","weeks":["Circuit","Max Velocity","Acceleration","Max Velocity"]},{"day":"Thursday","weeks":["Rest&Recovery","Rest&Recovery","Rest&Recovery","Rest&Recovery"]},{"day":"Friday","weeks":["Intensive Tempo","Stadium","Intensive Tempo","Pool"]}],"raceStructures":[{"event":"100m","phases":{"Accelerate":"0m-30m","Float":"30m-60m","Re-Accelerate":"60m-80m","Relax&Finish Big":"80m-100m"}},{"event":"200m","phases":{"Accelerate":"0m-30m","Float":"30m-85m","Re-Accelerate":"85m-110m","Relax&Finish Big":"110m-200m"}},{"event":"400m","phases":{"Accelerate":"0m-30m","Float":"30m-200m","Re-Accelerate":"200m-230m","Relax&Finish Big":"230m-400m"}}]};
 
 function getTrainingStyle(){
-  let s = localStorage.getItem('ffp_program_style') || 'general';
-  // Safety: prenatal/postnatal are only valid for female users. If a non-female user
-  // somehow has one selected, fall back to the default program.
-  if((s==='prenatal' || s==='postnatal') && profile.gender !== 'female') s = 'general';
-  return s;
+  return localStorage.getItem('ffp_program_style') || 'general';
 }
 function setTrainingStyle(style){
   localStorage.setItem('ffp_program_style', style);
@@ -4742,6 +4861,44 @@ function styleMeta(key){
 
 // The active program = the current style's saved custom edits if present,
 // else that style's template (General Strength = built-in WORKOUT_STRUCTURE).
+function getPostpartumWeeks(){
+  // Weeks since delivery, from a stored delivery date (YYYY-MM-DD). null if not set.
+  try{
+    var d=localStorage.getItem('ffp_delivery_date');
+    if(!d) return null;
+    var dt=new Date(d+'T00:00:00'); if(isNaN(dt)) return null;
+    var ms=Date.now()-dt.getTime();
+    return Math.max(0, Math.floor(ms/(7*24*3600*1000)));
+  }catch(e){ return null; }
+}
+function setDeliveryDate(iso){ try{ localStorage.setItem('ffp_delivery_date', iso||''); }catch(e){} if(typeof annualPlan!=='undefined') annualPlan=null; }
+function getPostpartumPhase(){
+  // Manual override wins (user chose a phase directly).
+  try{ var mo=localStorage.getItem('ffp_postnatal_phase'); if(mo==='0-6wk'||mo==='6-12wk'||mo==='12wk+') return mo; }catch(e){}
+  var w=getPostpartumWeeks();
+  if(w===null) return null;           // unknown → don't filter (show full progression)
+  if(w<6) return '0-6wk';
+  if(w<12) return '6-12wk';
+  return '12wk+';
+}
+function setPostnatalPhase(p){ try{ if(p) localStorage.setItem('ffp_postnatal_phase',p); else localStorage.removeItem('ffp_postnatal_phase'); }catch(e){} if(typeof annualPlan!=='undefined') annualPlan=null; }
+function getPrenatalTrimester(){
+  // Manual override wins.
+  try{ var mo=localStorage.getItem('ffp_prenatal_trimester'); if(mo==='1'||mo==='2'||mo==='3') return parseInt(mo); }catch(e){}
+  try{
+    var due=localStorage.getItem('ffp_due_date');
+    if(!due) return null;
+    var dt=new Date(due+'T00:00:00'); if(isNaN(dt)) return null;
+    // 40 weeks gestation; weeks pregnant = 40 - weeks until due
+    var weeksToDue=Math.ceil((dt.getTime()-Date.now())/(7*24*3600*1000));
+    var weeksPregnant=40-weeksToDue;
+    if(weeksPregnant<14) return 1;
+    if(weeksPregnant<28) return 2;
+    return 3;
+  }catch(e){ return null; }
+}
+function setDueDate(iso){ try{ localStorage.setItem('ffp_due_date', iso||''); }catch(e){} if(typeof annualPlan!=='undefined') annualPlan=null; }
+function setPrenatalTrimester(t){ try{ if(t) localStorage.setItem('ffp_prenatal_trimester',String(t)); else localStorage.removeItem('ffp_prenatal_trimester'); }catch(e){} if(typeof annualPlan!=='undefined') annualPlan=null; }
 function getStyleBaseProgram(){
   const style=getTrainingStyle();
   // user-defined custom styles first
@@ -4760,7 +4917,20 @@ function getStyleBaseProgram(){
     }
     return WORKOUT_STRUCTURE;
   }
-  if(style!=='general' && STYLE_PROGRAMS[style]) return STYLE_PROGRAMS[style];
+  if(style!=='general' && STYLE_PROGRAMS[style]){
+    var prog=STYLE_PROGRAMS[style];
+    // POSTNATAL: show only the workouts for the user's current postpartum phase.
+    if(style==='postnatal'){
+      var ph=getPostpartumPhase();
+      if(ph){ var f=prog.filter(function(w){ return w.phase===ph; }); if(f.length) return f; }
+    }
+    // PRENATAL: show only the current trimester's workouts (if due date known).
+    if(style==='prenatal'){
+      var tri=getPrenatalTrimester();
+      if(tri){ var f2=prog.filter(function(w){ return w.trimester===tri; }); if(f2.length) return f2; }
+    }
+    return prog;
+  }
   return WORKOUT_STRUCTURE;
 }
 
@@ -5201,7 +5371,7 @@ function sportSCFinisherHTML(wo){
 }
 
 function maternityDisclaimerHTML(){
-  if(profile.gender !== 'female') return '';
+  // Show whenever the prenatal/postnatal program is active (so it's reviewable by anyone).
   const style = getTrainingStyle();
   if(style!=='prenatal' && style!=='postnatal') return '';
   const isPre = style==='prenatal';
@@ -5316,8 +5486,13 @@ const BODYWEIGHT_SUBS = {
   'calf':'Single-Leg Calf Raise','hip thrust':'Glute Bridge','thruster':'Squat to Press (BW)'
 };
 function bodyweightSubFor(exerciseName, head){
-  const k=((exerciseName||'')+' '+(head||'')).toLowerCase();
-  for(const key in BODYWEIGHT_SUBS){ if(k.includes(key)) return BODYWEIGHT_SUBS[key]; }
+  // Match on the EXERCISE NAME first — the section head (e.g. "Vertical Pull") is too coarse and
+  // can turn an unrelated lift (a clean jump shrug) into something wrong (pull-ups). Only fall
+  // back to the head if the name yields nothing.
+  const nm=(exerciseName||'').toLowerCase();
+  for(const key in BODYWEIGHT_SUBS){ if(nm.includes(key)) return BODYWEIGHT_SUBS[key]; }
+  const hd=(head||'').toLowerCase();
+  for(const key in BODYWEIGHT_SUBS){ if(hd.includes(key)) return BODYWEIGHT_SUBS[key]; }
   return null;
 }
 
@@ -5328,6 +5503,34 @@ function bodyweightSubFor(exerciseName, head){
 function adaptSectionToEquipment(s){
   const origEquip = s.equipment || '';
   const origEx = s.exercise || s.lift;
+  // ── BARBELL = ADVANCED ONLY ────────────────────────────────────────
+  // Beginner & Intermediate users are never prescribed barbell exercises.
+  // Redirect any barbell movement to a non-barbell equivalent for them.
+  try {
+    const _exp = (profile.experience||'').toLowerCase();
+    const _isBarbell = /^(barbell|bb)$/i.test((origEquip||'').trim());
+    if(_isBarbell && _exp !== 'advanced'){
+      // Some barbell lifts are BARBELL-NATIVE — a dumbbell version is awkward or not how the
+      // movement is done (hip thrust, back/front squat, deadlift, good morning, olympic lifts).
+      // For these, regress to the proper bodyweight/defined sub instead of forcing a dumbbell.
+      const barbellNative = /hip thrust|hip thruster|back squat|front squat|^squat$|deadlift|good morning|clean|snatch|jerk|rack pull|pendlay|barbell row|overhead press|push press/i.test(origEx||'');
+      const defSub = (typeof MAXABLE_LIFTS!=='undefined' && MAXABLE_LIFTS[origEx] && MAXABLE_LIFTS[origEx].bodyweight_sub) ? MAXABLE_LIFTS[origEx].bodyweight_sub : null;
+      if(barbellNative){
+        const bsub = defSub || ((typeof bodyweightSubFor==='function') ? bodyweightSubFor(origEx, s.head) : null) || origEx;
+        return { equipment:'Bodyweight', exercise: bsub, swapped:true, reason:`Barbell→${bsub} (advanced-only rule)` };
+      }
+      // For lifts that DO transfer to dumbbells/other implements (presses, rows, curls, lunges),
+      // prefer a weighted implement the user owns, else the bodyweight sub.
+      const prefs = ['DB','KB','Cable','Machine','Smith Machine'];
+      for(const code of prefs){
+        if(typeof isEquipAvailable==='function' && isEquipAvailable(code)){
+          return { equipment: code, exercise: origEx, swapped:true, reason:`Barbell→${code} (advanced-only rule)` };
+        }
+      }
+      const bsub = defSub || ((typeof bodyweightSubFor==='function') ? bodyweightSubFor(origEx, s.head) : null);
+      return { equipment:'Bodyweight', exercise: bsub || origEx, swapped:true, reason:`Barbell→Bodyweight (advanced-only rule)` };
+    }
+  } catch(e){}
   // Inherently bodyweight (or unset) → leave as-is
   if(!origEquip || origEquip==='Bodyweight') return { equipment: origEquip, exercise: origEx, swapped:false };
   // If the assigned equipment is available, keep it untouched
@@ -5352,13 +5555,17 @@ function adaptSectionToEquipment(s){
   const bodyweightStyle = (style==='calisthenics' || style==='yoga' || style==='prenatal' || style==='postnatal');
 
   // Try to keep the movement using another WEIGHTED implement the user owns
-  const WEIGHTED = ['BB','DB','KB','Cable','Machine','Smith Machine','EZ Curl Bar','MB'];
+  // Prefer dumbbell/kettlebell before barbell — a barbell is rarely the closest swap
+  // for a DB/cable movement, and single-arm work can't be done with a barbell at all.
+  const WEIGHTED = ['DB','KB','Cable','Machine','Smith Machine','EZ Curl Bar','MB','BB'];
   // Exercises whose NAME is tied to a specific implement must NOT be silently relabeled
-  // (e.g. a "Lat Pulldown" can't just become a "Barbell" — that's the bug we're fixing).
-  // If a name-locked movement reaches here, force a bodyweight/appropriate swap instead.
+  // (e.g. a "Lat Pulldown" can't just become a "Barbell").
   const nameLocked = /pulldown|pull-down|cable|machine|leg press|leg curl|leg extension|pec deck|pec-deck|smith|pushdown|woodchop|pallof|crossover|face pull/i.test(origEx);
+  // Single-arm / unilateral movements can never become a barbell lift.
+  const isUnilateral = /\bsa\b|single[- ]?arm|single[- ]?leg|1[- ]?arm|1[- ]?leg|\bsl\b/i.test(origEx);
   if(!nameLocked){
     for(const code of WEIGHTED){
+      if(code==='BB' && isUnilateral) continue; // never put a single-arm move on a barbell
       if(code!==origEquip && isEquipAvailable(code)) {
         return { equipment: code, exercise: origEx, swapped:true, reason:`${origEquip}→${code}` };
       }
@@ -5462,11 +5669,94 @@ function getUserSchedule(){
   // Default: Tue/Thu/Sat workout, Mon/Wed/Fri recovery, Sun rest
   return {0:'rest',1:'recovery',2:'workout',3:'recovery',4:'workout',5:'recovery',6:'workout'};
 }
-function setUserSchedule(sched){
-  localStorage.setItem('ffp_schedule', JSON.stringify(sched));
-  // Invalidate cached annual plan so calendars rebuild
+// SEQUENCE PIN: the single source of truth for "which workout is when".
+// { dateISO, index } means: that date's workout is `index` (0-based). Everything else
+// counts forward/backward from the pin using the CURRENT schedule for future dates.
+// Changing the schedule never moves the pin, so the sequence never skips or repeats.
+function getSequencePin(){
+  try{ const p=JSON.parse(localStorage.getItem('ffp_seq_pin')||'null');
+       if(p&&p.dateISO&&typeof p.index==='number') return p; }catch(e){}
+  // Default pin from the program anchor at index 0.
+  const a=getProgramAnchor();
+  const pin={dateISO:new Date(a.getFullYear(),a.getMonth(),a.getDate()).toISOString().slice(0,10), index:0};
+  try{ localStorage.setItem('ffp_seq_pin', JSON.stringify(pin)); }catch(e){}
+  return pin;
+}
+function nudgeNextWorkout(delta){
+  // Re-pin: set the next upcoming workout day to (currentNext + delta), clamped into program cycle.
+  try{
+    var sched=getUserSchedule();
+    var today=new Date(); var t0=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+    // find next workout day >= today
+    var nd=new Date(t0); var guard=0;
+    while((sched[nd.getDay()]||'rest')!=='workout' && guard<400){ nd.setDate(nd.getDate()+1); guard++; }
+    var curIdx=getSessionIndexForDate(nd); if(curIdx===null) curIdx=getSequencePin().index;
+    var progLen=(typeof getActiveProgram==='function' && getActiveProgram())?getActiveProgram().length:12;
+    var newIdx=curIdx+delta;
+    // keep it sane (don't go negative)
+    if(newIdx<0) newIdx=0;
+    setSequencePin(new Date(nd.getFullYear(),nd.getMonth(),nd.getDate()).toISOString().slice(0,10), newIdx);
+    if(typeof renderScheduleEditor==='function') renderScheduleEditor();
+    if(typeof updateWorkoutsPage==='function') updateWorkoutsPage();
+    if(typeof renderHomePage==='function') renderHomePage();
+  }catch(e){}
+}
+function setSequencePin(dateISO,index){
+  try{ localStorage.setItem('ffp_seq_pin', JSON.stringify({dateISO:dateISO,index:index})); }catch(e){}
   if(typeof annualPlan!=='undefined') annualPlan=null;
 }
+
+// One-time pin correction (v2): align the sequence so the next workout is #2 (Pull).
+(function(){
+  try{
+    if(localStorage.getItem('ffp_seq_pin_fix_v2')==='1') return;
+    function apply(){
+      try{
+        if(typeof getUserSchedule!=='function' || typeof setSequencePin!=='function') return false;
+        var sched=getUserSchedule();
+        var today=new Date(); var t0=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+        var nd=new Date(t0); var guard=0;
+        while((sched[nd.getDay()]||'rest')!=='workout' && guard<400){ nd.setDate(nd.getDate()+1); guard++; }
+        // index 1 = Workout #2 (0-based)
+        setSequencePin(new Date(nd.getFullYear(),nd.getMonth(),nd.getDate()).toISOString().slice(0,10), 1);
+        localStorage.setItem('ffp_seq_pin_fix_v2','1');
+        return true;
+      }catch(e){ return false; }
+    }
+    if(!apply()){ window.addEventListener('load', function(){ apply();
+      try{ if(typeof updateWorkoutsPage==='function') updateWorkoutsPage(); }catch(e){} }); }
+  }catch(e){}
+})();
+
+// Back-compat shim (older code referenced epochs; keep it harmless).
+function getScheduleEpochs(){ const p=getSequencePin(); return [{effective:p.dateISO, schedule:getUserSchedule(), startCount:p.index}]; }
+function _countWorkouts(fromISO, toDateExclusive, sched){
+  // count workout-days in [from, toExclusive) using the given schedule
+  let c=0; const cur=new Date(fromISO+'T00:00:00');
+  const end=new Date(toDateExclusive.getFullYear(),toDateExclusive.getMonth(),toDateExclusive.getDate());
+  while(cur<end){ if((sched[cur.getDay()]||'rest')==='workout') c++; cur.setDate(cur.getDate()+1); }
+  return c;
+}
+function setUserSchedule(sched){
+  // Continue the workout sequence from where the user actually is. Find the NEXT workout
+  // number under the OLD schedule (starting today), then re-pin it to the next workout day
+  // under the NEW schedule. Past days are never recomputed.
+  try{
+    const today=new Date(); const t0=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+    // What is the next scheduled workout index from today under the CURRENT (old) schedule?
+    let nextIdx=null;
+    const probe=new Date(t0);
+    for(let k=0;k<400;k++){ const idx=getSessionIndexForDate(probe); if(idx!==null){ nextIdx=idx; break; } probe.setDate(probe.getDate()+1); }
+    if(nextIdx===null) nextIdx=getSequencePin().index;
+    // Save the new schedule, then pin that same next index to the first workout day (>=today) under NEW schedule.
+    localStorage.setItem('ffp_schedule', JSON.stringify(sched));
+    const nd=new Date(t0);
+    for(let k=0;k<400;k++){ if((sched[nd.getDay()]||'rest')==='workout') break; nd.setDate(nd.getDate()+1); }
+    setSequencePin(new Date(nd.getFullYear(),nd.getMonth(),nd.getDate()).toISOString().slice(0,10), nextIdx);
+  }catch(e){ localStorage.setItem('ffp_schedule', JSON.stringify(sched)); }
+  if(typeof annualPlan!=='undefined') annualPlan=null;
+}
+
 function getDayType(dow){
   const sched=getUserSchedule();
   return sched[dow]||'rest';
@@ -5926,22 +6216,32 @@ function getProgramAnchor(){
   try{ localStorage.setItem('ffp_program_anchor', anchor.toISOString()); }catch(e){}
   return anchor;
 }
+
+// (Obsolete one-time calendar shift removed — sequence now uses ffp_seq_pin)
+
+
 function getSessionIndexForDate(date){
-  const dow=date.getDay();
-  if(getDayType(dow)!=='workout')return null;
-  const anchor=getProgramAnchor();
-  const start=new Date(anchor.getFullYear(),anchor.getMonth(),anchor.getDate());
+  const sched=getUserSchedule();
   const target=new Date(date.getFullYear(),date.getMonth(),date.getDate());
-  if(target<start){
-    // Date is before the anchor — count backward so numbering still makes sense
-    let count=0;const cursor=new Date(target);
-    while(cursor<start){if(getDayType(cursor.getDay())==='workout')count--;cursor.setDate(cursor.getDate()+1);}
-    return count; // negative; mod handled by callers
+  if((sched[target.getDay()]||'rest')!=='workout') return null;
+  const pin=getSequencePin();
+  const pinDate=new Date(pin.dateISO+'T00:00:00');
+  if(target.getTime()===pinDate.getTime()) return pin.index;
+  // Count workout-days strictly between pinDate and target (exclusive), by current schedule.
+  let between=0;
+  if(target>pinDate){
+    const cur=new Date(pinDate);
+    while(true){ cur.setDate(cur.getDate()+1); if(cur.getTime()===target.getTime()) break;
+                 if((sched[cur.getDay()]||'rest')==='workout') between++; }
+    return pin.index + between + 1; // +1 because target itself is a workout day after the gap
+  } else {
+    const cur=new Date(pinDate);
+    while(true){ cur.setDate(cur.getDate()-1); if(cur.getTime()===target.getTime()) break;
+                 if((sched[cur.getDay()]||'rest')==='workout') between++; }
+    return pin.index - between - 1;
   }
-  let count=0;const cursor=new Date(start);
-  while(cursor<target){if(getDayType(cursor.getDay())==='workout')count++;cursor.setDate(cursor.getDate()+1);}
-  return count; // 0-based continuous index across all months
 }
+
 function getWorkoutForDate(date){
   const idx=getSessionIndexForDate(date);
   if(idx===null)return null;
@@ -6007,6 +6307,35 @@ function restoreProfile() {
   safeSet('inp-custom-goal', profile.customGoal);
 }
 
+function renderExperienceControl(){
+  var el=document.getElementById('experience-control'); if(!el) return;
+  var cur=(profile.experience||'advanced').toLowerCase();
+  var opts=[['beginner','Beginner'],['intermediate','Intermediate'],['advanced','Advanced']];
+  el.innerHTML=opts.map(function(o){
+    var on=cur===o[0];
+    return '<button onclick="setExperience(\''+o[0]+'\')" class="btn '+(on?'':'btn-outline')+'" style="flex:1;min-width:100px;padding:0.55rem 0.4rem;font-size:0.78rem;font-weight:700">'+o[1]+'</button>';
+  }).join('');
+}
+function setExperience(level){
+  try{
+    profile.experience=level;
+    localStorage.setItem('ffp_profile', JSON.stringify(profile));
+    if(typeof updateWorkoutsPage==='function') updateWorkoutsPage();
+    if(typeof renderHomePage==='function') renderHomePage();
+    if(typeof renderExperienceControl==='function') renderExperienceControl();
+  }catch(e){}
+}
+// One-time: existing profiles were created before an experience step existed, so profile.experience
+// was blank and every barbell lift got swapped. Default a blank experience to 'advanced' once, so
+// existing users (and the app's author) keep their barbell work. New users pick it in onboarding.
+(function(){
+  try{
+    if(localStorage.getItem('ffp_experience_default_v1')==='1') return;
+    var p=JSON.parse(localStorage.getItem('ffp_profile')||'{}');
+    if(!p.experience){ p.experience='advanced'; localStorage.setItem('ffp_profile', JSON.stringify(p)); }
+    localStorage.setItem('ffp_experience_default_v1','1');
+  }catch(e){}
+})();
 function saveProfile() {
   // Save current state — reads from wizard step fields if present, otherwise keeps existing profile values
   const safeVal = (id) => { const el = document.getElementById(id); return el ? el.value : undefined; };
@@ -6020,6 +6349,7 @@ function saveProfile() {
     ft: parseInt(safeVal('inp-ft')) || profile.ft,
     in: parseInt(safeVal('inp-in')) || profile.in,
     activity: safeVal('inp-activity') || profile.activity,
+    experience: safeVal('inp-experience') || profile.experience,
     goal: selectedGoal,
     bodyType: selectedBodyType,
     trainingMode: selectedTrainingMode,
@@ -6110,8 +6440,26 @@ function setTrainingModeOverride(mode){
   if(typeof PHASES==='undefined' || !PHASES[mode]) return false;
   try{ localStorage.setItem('ffp_mode_override', mode); }catch(e){}
   try{ if(typeof MDE!=='undefined') MDE.logOverride({type:'coach_mode', detail:'emphasis → '+mode}); }catch(e){}
-  try{ if(typeof apply==='function') apply(); }catch(e){}
+  try{ if(typeof updateWorkoutsPage==='function') updateWorkoutsPage(); }catch(e){}
   return true;
+}
+function _hardRefreshAfterMode(){
+  // Recalculate currentPhase (deriveTrainingMode honors the override) and re-render
+  // every surface so weights, reps, %1RM, and rest all update immediately.
+  try{ if(typeof updateWorkoutsPage==='function') updateWorkoutsPage(); }catch(e){}
+  try{ if(typeof renderHomePage==='function') renderHomePage(); }catch(e){}
+  try{ if(typeof updateNutritionPage==='function') updateNutritionPage(); }catch(e){}
+  try{ if(typeof renderEditProgram==='function') renderEditProgram(); }catch(e){}
+}
+function setEditTrainingMode(mode){
+  if(typeof setTrainingModeOverride==='function'){ setTrainingModeOverride(mode); }
+  else { try{ localStorage.setItem('ffp_mode_override', mode); }catch(e){} }
+  _hardRefreshAfterMode();
+}
+function clearEditTrainingMode(){
+  if(typeof clearTrainingModeOverride==='function'){ clearTrainingModeOverride(); }
+  else { try{ localStorage.removeItem('ffp_mode_override'); }catch(e){} }
+  _hardRefreshAfterMode();
 }
 function clearTrainingModeOverride(){
   try{ localStorage.removeItem('ffp_mode_override'); }catch(e){}
@@ -6128,6 +6476,15 @@ function deriveTrainingMode() {
   try{
     const manual = localStorage.getItem('ffp_mode_override');
     if(manual && typeof PHASES!=='undefined' && PHASES[manual]) return manual;
+  }catch(e){}
+
+  // SEASON PRIORITY: if the athlete has configured season dates, the season-based
+  // periodization (ME→Hyp→Str→Power, timed to competition) drives the mode.
+  try{
+    if(typeof getSeasons==='function' && getSeasons().length){
+      const sp=getSeasonPhase(new Date());
+      if(sp && typeof PHASES!=='undefined' && PHASES[sp]) return sp;
+    }
   }catch(e){}
 
   // PRIMARY: use the current week's phase from the annual plan — this is the
@@ -6573,7 +6930,105 @@ function renderPeriodizationCalendar(plan) {
   desc.innerHTML = `Your training is periodized across <strong>${compCount} competition month${compCount !== 1 ? 's' : ''}</strong> for <strong>${sportSeason}</strong>. Each phase builds on the last — hypertrophy → strength → power → taper → compete → recover — so you arrive at every event at peak performance.`;
 }
 
+// ── SEASON-BASED PERIODIZATION ─────────────────────────────────────────────
+// Phase order is ALWAYS: Muscular Endurance → Hypertrophy → Strength → Power,
+// timed so Power lands in-season. Time in each phase varies by sport type.
+// Pure power/strength sports skip Muscular Endurance.
+function getSeasons(){
+  try{ const s=JSON.parse(localStorage.getItem('ffp_seasons')||'[]'); return Array.isArray(s)?s:[]; }catch(e){ return []; }
+}
+function renderSeasonsControl(){
+  var el=document.getElementById('seasons-control'); if(!el) return;
+  var seasons=getSeasons();
+  var type=getAthleteType();
+  var rows=seasons.map(function(s,idx){
+    return '<div style="display:flex;gap:0.4rem;align-items:center;margin-bottom:0.4rem;flex-wrap:wrap">'
+      +'<input placeholder="Sport" value="'+(s.sport||'').replace(/"/g,"&quot;")+'" onchange="_seasonEdit('+idx+',\'sport\',this.value)" style="flex:2;min-width:90px;padding:0.4rem;border-radius:8px;background:var(--bg);color:var(--text);border:1px solid var(--border)">'
+      +'<input type="date" value="'+(s.start||'')+'" onchange="_seasonEdit('+idx+',\'start\',this.value)" style="flex:1;min-width:120px;padding:0.4rem;border-radius:8px;background:var(--bg);color:var(--text);border:1px solid var(--border)">'
+      +'<input type="date" value="'+(s.end||'')+'" onchange="_seasonEdit('+idx+',\'end\',this.value)" style="flex:1;min-width:120px;padding:0.4rem;border-radius:8px;background:var(--bg);color:var(--text);border:1px solid var(--border)">'
+      +'<button onclick="_seasonRemove('+idx+')" class="btn btn-sm btn-outline" style="padding:0.3rem 0.55rem">✕</button>'
+      +'</div>';
+  }).join('');
+  var typeBtns='<div style="margin-top:0.5rem;font-size:0.7rem;color:var(--muted);margin-bottom:0.25rem">Athlete type (affects whether a Muscular-Endurance base is used):</div>'
+    +'<div style="display:flex;gap:0.4rem">'
+    +'<button onclick="setAthleteTypeUI(\'endurance\')" class="btn '+(type==='endurance'?'':'btn-outline')+' btn-sm" style="flex:1">Endurance / Mixed</button>'
+    +'<button onclick="setAthleteTypeUI(\'power\')" class="btn '+(type==='power'?'':'btn-outline')+' btn-sm" style="flex:1">Power / Strength</button>'
+    +'</div>';
+  var curPhase=getSeasonPhase(new Date());
+  var status = seasons.length ? ('<div style="font-size:0.72rem;color:var(--accent);font-weight:600;margin-top:0.5rem">Current auto-phase from your season: '+(curPhase?curPhase.charAt(0).toUpperCase()+curPhase.slice(1):'—')+'</div>') : '';
+  el.innerHTML = rows
+    + '<button onclick="_seasonAdd()" class="btn btn-sm btn-outline" style="margin-top:0.2rem">+ Add season</button>'
+    + typeBtns + status;
+}
+function _seasonAdd(){ var s=getSeasons(); s.push({sport:'',start:'',end:''}); setSeasons(s); renderSeasonsControl(); }
+function _seasonRemove(i){ var s=getSeasons(); s.splice(i,1); setSeasons(s); renderSeasonsControl(); refreshSeasonUI(); }
+function _seasonEdit(i,field,val){ var s=getSeasons(); if(s[i]){ s[i][field]=val; setSeasons(s); if(field!=='sport') refreshSeasonUI(); renderSeasonsControl(); } }
+function setAthleteTypeUI(t){ setAthleteType(t); renderSeasonsControl(); refreshSeasonUI(); }
+function refreshSeasonUI(){
+  try{ if(typeof updateWorkoutsPage==='function') updateWorkoutsPage(); }catch(e){}
+  try{ if(typeof renderHomePage==='function') renderHomePage(); }catch(e){}
+}
+function setSeasons(arr){
+  try{ localStorage.setItem('ffp_seasons', JSON.stringify(arr||[])); }catch(e){}
+  if(typeof annualPlan!=='undefined') annualPlan=null;
+}
+// Sports that are power/strength-dominant → skip the muscular-endurance base phase.
+const POWER_STRENGTH_SPORTS=['powerlifting','weightlifting','olympic weightlifting','shot put','discus','javelin','hammer throw','throws','sprint','sprints','100m','200m','60m','high jump','long jump','pole vault','jumps','football lineman','powerlifter'];
+function getAthleteType(){
+  // explicit override wins
+  const ov=(localStorage.getItem('ffp_athlete_type')||'').toLowerCase();
+  if(ov==='power'||ov==='endurance') return ov;
+  // infer from sport name
+  const sport=((profile.competitiveSport||profile.recreationalSport||'')+'').toLowerCase();
+  if(POWER_STRENGTH_SPORTS.some(s=>sport.includes(s))) return 'power';
+  return 'endurance'; // default: most athletes need the ME base
+}
+function setAthleteType(t){ try{ localStorage.setItem('ffp_athlete_type', t||''); }catch(e){} if(typeof annualPlan!=='undefined') annualPlan=null; }
+
+// Given today, return the season-driven phase key, or null if no seasons configured.
+function getSeasonPhase(today){
+  const seasons=getSeasons();
+  if(!seasons.length) return null;
+  today=today||new Date(); today=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+  const type=getAthleteType();
+  // Build the pre-season phase ramp ending at season start. Weeks per phase by type.
+  // endurance-type: ME + Hyp longer; power-type: skip ME.
+  function parse(d){ const x=new Date(d+'T00:00:00'); return isNaN(x)?null:new Date(x.getFullYear(),x.getMonth(),x.getDate()); }
+  // Find the season we're in, or the next upcoming one.
+  let inSeason=null, next=null;
+  for(const s of seasons){
+    const st=parse(s.start), en=parse(s.end); if(!st||!en) continue;
+    if(today>=st && today<=en){ inSeason=s; break; }
+    if(today<st && (!next || parse(s.start)<parse(next.start))) next=s;
+  }
+  if(inSeason) return 'power'; // in-season → power/maintain
+  if(!next) {
+    // after all seasons this year (off-season, far out) → base work
+    return type==='power' ? 'hypertrophy' : 'endurance';
+  }
+  // We're pre-season, ramping toward `next`. Compute weeks until season start.
+  const st=parse(next.start);
+  const msWeek=7*24*3600*1000;
+  const weeksOut=Math.ceil((st-today)/msWeek);
+  // Phase windows (weeks BEFORE season start), by athlete type:
+  //   power-type:      Power ≤4wk · Strength 5–10wk · Hypertrophy >10wk  (no ME)
+  //   endurance-type:  Power ≤4wk · Strength 5–9wk · Hypertrophy 10–16wk · ME >16wk
+  if(type==='power'){
+    if(weeksOut<=4) return 'power';
+    if(weeksOut<=10) return 'strength';
+    return 'hypertrophy';
+  } else {
+    if(weeksOut<=4) return 'power';
+    if(weeksOut<=9) return 'strength';
+    if(weeksOut<=16) return 'hypertrophy';
+    return 'endurance'; // muscular endurance base
+  }
+}
 function getCurrentPeriodizationPhase() {
+  // Prefer explicit season start/end dates (the season-based model) if the user set them.
+  const sp = getSeasonPhase(new Date());
+  if (sp) return sp;
+  // Legacy month-based schedule fallback.
   if (!wantsCompSchedule || !yearlyPeriodization) return null;
   const currentMonth = new Date().getMonth();
   return yearlyPeriodization[currentMonth];
@@ -6839,7 +7294,7 @@ function getExerciseName(section) {
 // ── Estimate a SAFE starting 1RM before the user has tested a max ──
 // Uses onboarding inputs (gender, age, weight, height, experience, activity, body type).
 // Deliberately conservative — biased to the low end of what the person could most likely lift.
-function estimateMax(lift){
+function estimateMax(lift, curEquip){
   // bodyweight in lbs
   let bw = parseFloat(profile.weight)||0;
   if((profile.weightUnit||'').toLowerCase().startsWith('k')) bw = bw*2.20462;
@@ -6853,19 +7308,47 @@ function estimateMax(lift){
   // Level norms). This is the realistic, SAFE starting point for a true beginner — not so light
   // it's useless, not so heavy it risks injury. Experience scales up from here.
   const baseMult = {
-    'Back Squat':0.75, 'Front Squat':0.60, 'Split Squat':0.35, 'Deadlift':1.00, 'Stiff Leg Deadlift':0.75,
-    'Good Morning':0.45, 'Hip Thruster':1.00, 'Bench Press':0.60, 'Incline Bench Press':0.50,
-    'Chest Press':0.55, 'SA Bench Press':0.25, 'Shoulder Press':0.40, 'Push Press':0.50, 'Arnold Press':0.30,
-    'SA Press':0.18, 'Bent Row':0.55, 'SA Row':0.25, 'Lat Pulldown':0.60, 'Clean High Pull':0.55
+    // ── Lower body — compound (× bodyweight, untrained male) ──
+    'Back Squat':0.75, 'Front Squat':0.60, 'Split Squat':0.35, 'SL Squat':0.30, 'Pistol Squat':0.30,
+    'Linear Lunge':0.35, 'Deadlift':1.00, 'Stiff Leg Deadlift (SLDL)':0.75, 'SL RDL':0.35,
+    'Good Morning':0.45, 'Hip Thruster':1.00, 'Hip Extension':0.40, 'Back Extension':0.35,
+    // ── Lower body — accessory / machine (per limb where single) ──
+    'Leg Extension':0.35, 'Hamstring Curl':0.28, 'Calf Press':0.75, 'Hip Add/Abd':0.25,
+    // ── Horizontal press ──
+    'Bench Press':0.60, 'Incline Bench Press':0.50, 'Chest Press':0.55, 'SA Bench Press':0.22,
+    // ── Vertical / overhead press ──
+    'Shoulder Press':0.40, 'Push Press':0.50, 'Arnold Press':0.30, 'SA Press':0.18, 'SA Kneeling Press':0.16,
+    'Dips':0.10,
+    // ── Pull — vertical/horizontal ──
+    'Bent Row':0.55, 'SA Row':0.25, 'Standing Row':0.40, 'Split Stance Row':0.30, 'SA Bench Row':0.22,
+    'Inverted Row':0.10, 'Lat Pulldown':0.60, 'Pull-Up/Chin-Up':0.10, 'Pullover':0.25,
+    // ── Olympic / power ──
+    'Clean':0.65, 'Clean High Pull':0.55, 'Clean Jump Shrug':0.55, 'Split Jerk':0.55,
+    'Snatch':0.45, 'DB Snatch':0.20,
+    // ── Arms (small — per limb for DB) ──
+    'Bicep Curl':0.18, 'Hammer Curl':0.16, 'Zottman Curl':0.14, 'Reverse Curl':0.13,
+    'Tricep Extension':0.16,
+    // ── Shoulders / delts accessory (small) ──
+    'Lateral Raise':0.08, 'Front Raise':0.08, 'Reverse Fly':0.08, 'Chest Fly':0.14, 'Cable Fly':0.16
   };
   let mult = baseMult[lift];
-  if(mult==null) mult = 0.45; // generic fallback for any other lift
+  // Smarter generic fallback: infer size from the lift's NAME so we never treat an
+  // isolation/single-arm accessory like a heavy compound.
+  if(mult==null){
+    const n = (lift||'').toLowerCase();
+    const isSingle = /\bsa\b|single|1[- ]?arm|1[- ]?leg|\bsl\b|pistol/.test(n);
+    if(/curl|raise|fly|extension\b|pushdown|shrug|calf|adduction|abduction|rotation|pullover|face pull/.test(n)) mult = isSingle?0.10:0.18; // isolation
+    else if(/row|pulldown|pull|press|push/.test(n)) mult = isSingle?0.22:0.45; // mid compound
+    else if(/squat|deadlift|lunge|hinge|thrust|clean|snatch|jerk/.test(n)) mult = isSingle?0.30:0.55; // big compound
+    else mult = isSingle?0.15:0.30; // conservative default
+  }
 
   // Experience: beginner ≈ untrained (1.0), intermediate ≈ midway to novice (1.35),
   // advanced ≈ solid novice/early-intermediate (1.5) — strong but never beyond a safe estimate.
   const expMult = exp==='beginner'?1.0 : exp==='advanced'?1.5 : 1.35;
   // Female adjustment: lower-body ~0.72x, upper-body ~0.62x of male standards (published ratios).
-  const upper = ['Bench Press','Incline Bench Press','Chest Press','SA Bench Press','Shoulder Press','Push Press','Arnold Press','SA Press','Bent Row','SA Row','Lat Pulldown'].includes(lift);
+  const upperList = ['Bench Press','Incline Bench Press','Chest Press','SA Bench Press','Shoulder Press','Push Press','Arnold Press','SA Press','SA Kneeling Press','Dips','Bent Row','SA Row','Standing Row','Split Stance Row','SA Bench Row','Inverted Row','Lat Pulldown','Pull-Up/Chin-Up','Pullover','Bicep Curl','Hammer Curl','Zottman Curl','Reverse Curl','Tricep Extension','Lateral Raise','Front Raise','Reverse Fly','Chest Fly','Cable Fly','Arnold Press'];
+  const upper = upperList.includes(lift);
   const genderMult = gender==='f' ? (upper?0.62:0.72) : 1.0;
   // Age adjustment: peak ~20-30, gentle decline after; slightly reduced for under-18.
   let ageMult = 1.0;
@@ -6879,8 +7362,25 @@ function estimateMax(lift){
   let est = bw * mult * expMult * genderMult * ageMult * btMult;
   // Small 5% safety margin so first prescriptions err slightly light (form-first), not crushing.
   est *= 0.95;
+  // EQUIPMENT SCALING: the baseMult figures assume the exercise's PRIMARY (usually barbell) form.
+  // The same movement with a lighter implement can't carry the same absolute load, so scale the
+  // estimate to the equipment actually in use. This prevents impossible values like a 215 lb
+  // "dumbbell hip thrust" when a barbell movement is swapped to dumbbells.
+  const _eq=(curEquip||'').toLowerCase();
+  let eqScale=1.0;
+  if(/(^|\b)(db|dumbbell)\b/.test(_eq))               eqScale=0.45; // held dumbbells (pair) — much less than a loaded bar
+  else if(/(^|\b)(kb|kettlebell)\b/.test(_eq))        eqScale=0.40; // kettlebell(s)
+  else if(/(^|\b)(mb|medicine ball|sandbag)\b/.test(_eq)) eqScale=0.30;
+  else if(/cable/.test(_eq))                            eqScale=0.60; // cable stack
+  else if(/machine|smith/.test(_eq))                    eqScale=0.75; // supported machine
+  else if(/band/.test(_eq))                             eqScale=0.30;
+  else if(/bodyweight/.test(_eq))                       eqScale=1.0;  // bodyweight subs handled elsewhere
+  // Barbell / EZ / trap-bar / hex-bar keep 1.0 (the baseMult calibration).
+  est *= eqScale;
   // Sensible floors and rounding to 5 lb (barbell empty-bar floor applied separately at prescription).
-  const floor = upper?30:45;
+  // Non-barbell floor is lower since you can go lighter than an empty bar.
+  const isBarbellEq=/^bb\b|barbell|^ez|ez curl|ez bar|trap|hex/i.test(curEquip||'');
+  const floor = isBarbellEq ? (upper?30:45) : 5;
   est = Math.max(floor, Math.round(est/5)*5);
   return est;
 }
@@ -6888,7 +7388,7 @@ function estimateMax(lift){
 function calcWeight(lift, phasePct) {
   let m = maxes[lift];
   let estimated = false;
-  if (!m) { m = estimateMax(lift); estimated = true; }
+  if (!m) { m = estimateMax(lift, (typeof curEquip!=='undefined'?curEquip:null)); estimated = true; }
   if (!m) return '— (set max)';
   const ranges = { strength: [0.85, 0.95], hypertrophy: [0.67, 0.80], endurance: [0.55, 0.65], power: [0.30, 0.60] };
   const range = ranges[currentPhase];
@@ -9093,12 +9593,13 @@ function generateCoachReply(q) {
 function showAccountTab(tab, btn) {
   document.querySelectorAll('#page-account .tab-btn').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  ['overview','signup','data','subscription','appearance','roadmap'].forEach(t => {
+  ['overview','signup','data','subscription','appearance','roadmap','healthdata'].forEach(t => {
     const el = document.getElementById('acct-' + t);
     if (el) el.style.display = t === tab ? 'block' : 'none';
   });
   if (tab === 'overview') { renderDataSummary('data-summary-content', false); renderActiveUser(); renderUsersList(); }
   if (tab === 'data') renderDataSummary('stored-data-detail', true);
+  if (tab === 'healthdata') renderHealthData();
   if(tab==='appearance'){const btn=document.getElementById('theme-toggle-btn');if(btn)btn.innerHTML=currentTheme==='dark'?'☀️ Switch to Light Mode':'🌙 Switch to Dark Mode';if(typeof renderNotifToggle==='function')renderNotifToggle();if(typeof renderScheduleEditor==='function')renderScheduleEditor();}
 }
 
@@ -12120,6 +12621,8 @@ function initRecoveryPage_LEGACY() {
     safeSet('inp-hrv', todayLog.hrv);
     safeSet('inp-resting-hr', todayLog.restingHr);
     safeSet('inp-sleep-hours', todayLog.sleepHours);
+    safeSet('inp-sleep-bed', todayLog.sleepBed);
+    safeSet('inp-sleep-wake', todayLog.sleepWake);
     safeSet('inp-sleep-quality', todayLog.sleepQuality);
     safeSet('inp-strain', todayLog.strain);
     safeSet('inp-spo2', todayLog.spo2);
@@ -12179,6 +12682,24 @@ function updateRecoveryScore(val) {
   saveRecoveryLog();
 }
 
+function markSleepEdited(){ try{ var el=document.getElementById('inp-sleep-hours'); if(el) el.dataset.userEdited='1'; }catch(e){} }
+function calcSleepHours(){
+  try{
+    var bed=document.getElementById('inp-sleep-bed'), wake=document.getElementById('inp-sleep-wake'), out=document.getElementById('inp-sleep-hours');
+    if(!bed||!wake||!out) return;
+    // If the user manually edited the total, don't overwrite unless both times are set fresh.
+    if(!bed.value||!wake.value){ return; }
+    var bp=bed.value.split(':'), wp=wake.value.split(':');
+    if(bp.length<2||wp.length<2) return;
+    var bMin=parseInt(bp[0])*60+parseInt(bp[1]);
+    var wMin=parseInt(wp[0])*60+parseInt(wp[1]);
+    var diff=wMin-bMin;
+    if(diff<=0) diff+=24*60; // crossed midnight
+    var hrs=Math.round((diff/60)*10)/10;
+    out.value=hrs; out.dataset.userEdited='';
+    if(typeof saveRecoveryLog==='function') saveRecoveryLog();
+  }catch(e){}
+}
 function saveRecoveryLog() {
   const todayKey = new Date().toDateString();
   const log = {
@@ -13422,7 +13943,7 @@ function showWorkoutTab(tab, btn) {
   if (tab === 'year') renderYearView();
   if (tab === 'phase') renderPhaseView();
   if (tab === 'maxes') renderMaxesPage();
-  if (tab === 'edit') renderEditProgram();
+  if (tab === 'edit') { renderEditProgram(); if(typeof renderExperienceControl==='function') renderExperienceControl(); if(typeof renderSeasonsControl==='function') renderSeasonsControl(); }
   if (tab === 'equipment') renderEquipmentTab();
 }
 
@@ -13461,7 +13982,15 @@ function renderMaxesPage() {
   const container = document.getElementById('maxes-container');
   if (!container) return;
   maxes = JSON.parse(localStorage.getItem('ffp_maxes') || '{}');
-  const lifts = getStyleMaxableLifts();
+  let lifts = getStyleMaxableLifts();
+  // Also surface ANY lift the user already has a saved max for (e.g. tested maxes
+  // imported from a coach sheet) even if it isn't in the current program list.
+  try {
+    const savedLifts = Object.keys(maxes).filter(k => maxes[k] && maxes[k].oneRM);
+    const merged = new Set(lifts);
+    savedLifts.forEach(l => merged.add(l));
+    lifts = [...merged].sort((a,b)=>a.localeCompare(b));
+  } catch(e){}
   const filled = lifts.filter(l => maxes[l] && maxes[l].oneRM).length;
 
   let html = `<div class="card" style="margin-bottom:1rem">
@@ -14802,11 +15331,14 @@ function checkForNewBadges() {
 }
 
 function showBadgeToast(badge) {
-  const toast = document.createElement('div');
-  toast.style.cssText = 'position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:9999;background:var(--surface);border:2px solid var(--accent);border-radius:14px;padding:0.85rem 1.25rem;box-shadow:0 8px 32px rgba(0,0,0,0.4);display:flex;align-items:center;gap:0.75rem;animation:slideDown 0.4s ease';
-  toast.innerHTML = `<div style="font-size:2rem">${badge.icon}</div><div><div style="font-size:0.65rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--accent)">Badge Unlocked!</div><div style="font-weight:700">${badge.name}</div><div style="font-size:0.75rem;color:var(--muted)">${badge.desc}</div></div>`;
-  document.body.appendChild(toast);
-  setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.5s'; setTimeout(() => toast.remove(), 500); }, 3500);
+  try{
+    var c = (typeof _toastContainer==='function') ? _toastContainer() : document.body;
+    const toast = document.createElement('div');
+    toast.style.cssText = 'background:var(--surface);border:2px solid var(--accent);border-radius:14px;padding:0.85rem 1.25rem;box-shadow:0 8px 32px rgba(0,0,0,0.4);display:flex;align-items:center;gap:0.75rem;animation:slideDown 0.35s ease;pointer-events:auto';
+    toast.innerHTML = `<div style="font-size:2rem">${badge.icon}</div><div><div style="font-size:0.65rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--accent)">Badge Unlocked!</div><div style="font-weight:700">${badge.name}</div><div style="font-size:0.75rem;color:var(--muted)">${badge.desc}</div></div>`;
+    c.appendChild(toast);
+    setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.5s'; setTimeout(() => { if(toast.parentNode) toast.remove(); if(c.id==='ffp-toast-stack' && c.childElementCount===0 && c.parentNode) c.remove(); }, 500); }, 3500);
+  }catch(e){}
 }
 
 function renderAchievementsCard() {
@@ -15308,7 +15840,44 @@ function buildDailyMealEvents(m, mealsPerDay, dayType, woStart, woEnd, wakeMins,
   return meals;
 }
 
+function renderSeasonCard(){
+  var el=document.getElementById('home-season-card'); if(!el) return;
+  var seasons=(typeof getSeasons==='function')?getSeasons():[];
+  if(!seasons.length){ el.innerHTML=''; return; }
+  var today=new Date(); today=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+  function parse(d){ var x=new Date(d+'T00:00:00'); return isNaN(x)?null:new Date(x.getFullYear(),x.getMonth(),x.getDate()); }
+  // Determine in-season vs weeks-out to next season
+  var inSeason=null, next=null;
+  seasons.forEach(function(s){ var st=parse(s.start),en=parse(s.end); if(!st||!en)return;
+    if(today>=st&&today<=en){ if(!inSeason) inSeason=s; }
+    else if(today<st && (!next||parse(s.start)<parse(next.start))) next=s; });
+  var phase=(typeof getSeasonPhase==='function')?getSeasonPhase(today):null;
+  var phaseLabel=phase?phase.charAt(0).toUpperCase()+phase.slice(1):'—';
+  var line2='', badge='';
+  if(inSeason){
+    var daysLeft=Math.ceil((parse(inSeason.end)-today)/(24*3600*1000));
+    badge='🏆 IN SEASON';
+    line2=(inSeason.sport||'Season')+' · '+daysLeft+' day'+(daysLeft===1?'':'s')+' left';
+  } else if(next){
+    var weeksOut=Math.ceil((parse(next.start)-today)/(7*24*3600*1000));
+    badge='📅 '+weeksOut+' WK'+(weeksOut===1?'':'S')+' TO SEASON';
+    line2='Next: '+(next.sport||'Season')+' starts '+next.start;
+  } else {
+    badge='🌱 OFF-SEASON';
+    line2='Building your base';
+  }
+  var overriding=(typeof localStorage!=='undefined' && localStorage.getItem('ffp_mode_override'));
+  var phaseNote = overriding ? ('Manual mode active ('+overriding+') — overriding season') : ('Auto phase: '+phaseLabel);
+  el.innerHTML='<div class="card" style="padding:0.85rem 1rem">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem">'
+    +'<div style="font-size:0.62rem;font-weight:800;letter-spacing:1.5px;color:var(--accent)">'+badge+'</div>'
+    +'<div style="font-size:0.72rem;font-weight:700;color:'+(overriding?'#e67e22':'var(--accent)')+'">'+phaseNote+'</div>'
+    +'</div>'
+    +'<div style="font-size:0.8rem;color:var(--text);margin-top:0.25rem">'+line2+'</div>'
+    +'</div>';
+}
 function renderHomePage(){
+  try{ renderSeasonCard(); }catch(e){}
   const now=new Date(),dow=now.getDay(),dayType=getDayType(dow);
   const name=profile&&profile.name?profile.name.split(' ')[0]:'Athlete';
   const hour=now.getHours();
@@ -15520,8 +16089,16 @@ function prescriptionLine(s, ex, curEquip, isWeighted, ph, pyramidHTML){
     if(isSchemeNote(s.note)) return `<div style="${style}">${s.note} ${rpeBadge}<div style="font-size:0.68rem;color:var(--muted);font-weight:400;margin-top:0.15rem">${rpe.cue}</div></div>`;
     return `<div style="${style}">${ph.sets} sets × ${ph.reps} reps ${rpeBadge}<div style="font-size:0.68rem;color:var(--muted);font-weight:400;margin-top:0.15rem">${rpe.cue}</div></div>`;
   }
-  // Bodyweight / non-weighted: show the scheme if given, else generic reps
+  // Bodyweight / non-weighted: show the scheme if given, else generic reps.
+  // Do NOT inherit weighted-phase scheme text (e.g. Maxes "2–3 warm-up + 2–3 max"),
+  // which is meaningless for bodyweight core/accessory work — use sensible defaults.
   if(isSchemeNote(s.note)) return `<div style="${style}">${s.note}</div>`;
+  const _phaseText=String(ph.sets||'');
+  const _isTestScheme=/warm-?up|max|assess/i.test(_phaseText) || /max|any rep/i.test(String(ph.reps||''));
+  if(_isTestScheme){
+    // Bodyweight movements aren't max-tested — prescribe standard volume.
+    return `<div style="${style}">3 sets × 12–15 reps</div>`;
+  }
   return `<div style="${style}">${ph.sets} sets × ${ph.reps} reps</div>`;
 }
 
@@ -15567,13 +16144,23 @@ function renderEditProgram(){
   const prog = getActiveProgram();
   const isCustom = !!localStorage.getItem(customProgramKey());
 
+  // Training Mode selector (rep range / intensity emphasis) --------------------
+  const MODE_OPTS = [
+    ['power','Power'],['strength','Strength'],['hypertrophy','Hypertrophy'],['endurance','Endurance']
+  ];
+  const _modeOverride = (typeof getTrainingModeOverride==='function') ? getTrainingModeOverride() : null;
+  const _activeMode = (typeof deriveTrainingMode==='function') ? deriveTrainingMode() : (_modeOverride||'strength');
+  const modeBtns = MODE_OPTS.map(([k,lbl])=>{
+    const on = (_activeMode===k);
+    return `<button onclick="setEditTrainingMode('${k}')" class="btn ${on?'':'btn-outline'}" style="flex:1;min-width:110px;padding:0.55rem 0.4rem;font-size:0.78rem;font-weight:700">${lbl}</button>`;
+  }).join('') + `<button onclick="clearEditTrainingMode()" class="btn ${_modeOverride?'btn-outline':''}" style="flex:1;min-width:110px;padding:0.55rem 0.4rem;font-size:0.72rem;font-weight:700" title="Follow the phase from your annual plan">Auto (my plan)</button>`;
+  const modeStatus = _modeOverride
+    ? `Manual mode: <strong style="color:var(--accent)">${(PHASES[_modeOverride]&&PHASES[_modeOverride].label)||_modeOverride}</strong> — overriding your plan's phase. Tap “Auto (my plan)” to follow your annual plan again.`
+    : `Following your plan's current phase: <strong style="color:var(--accent)">${(PHASES[_activeMode]&&PHASES[_activeMode].label)||_activeMode}</strong>.`;
+
   // Prenatal/Postnatal only surface for female users. Pregnant users are auto-assigned
   // Prenatal during onboarding; non-pregnant female users can still choose them here.
-  const showMaternity = (profile.gender === 'female');
-  const styleBtns = Object.keys(PROGRAM_STYLES).filter(k=>{
-    if((k==='prenatal' || k==='postnatal') && !showMaternity) return false;
-    return true;
-  }).concat(Object.keys(getCustomStyles())).map(k=>{
+  const styleBtns = Object.keys(PROGRAM_STYLES).concat(Object.keys(getCustomStyles())).map(k=>{
     const s=styleMeta(k);const on=k===style;
     return `<button onclick="changeProgramStyle('${k}')" class="btn ${on?'':'btn-outline'}" style="flex:1;min-width:130px;padding:0.6rem 0.4rem;font-size:0.78rem;font-weight:700">${s.label}</button>`;
   }).join('');
@@ -15585,6 +16172,38 @@ function renderEditProgram(){
     <p style="font-size:0.8rem;color:var(--muted);margin-bottom:0.85rem">Tap any exercise or its equipment to change it — just like in your daily workout. Changes apply automatically to your Today, Week, Month, and Home schedules. Sets &amp; reps are set automatically by your training phase; ask the AI Coach if you'd like those adjusted.</p>
     <div style="font-size:0.66rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:0.45rem">Training Style</div>
     <div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.5rem">${styleBtns}</div>
+    ${(style==='postnatal')?`<div style="margin-bottom:0.75rem;padding:0.75rem;border:1px solid var(--border);border-radius:10px;background:var(--surface2)">
+      <div style="font-weight:700;font-size:0.82rem;margin-bottom:0.35rem">📅 Delivery date</div>
+      <div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.5rem">Milton uses this to start you in the right postpartum phase (0–6wk recovery, 6–12wk rebuild, 12wk+ progressive) instead of always at week 1.</div>
+      <input type="date" value="${localStorage.getItem('ffp_delivery_date')||''}" onchange="setDeliveryDate(this.value); if(typeof updateWorkoutsPage==='function')updateWorkoutsPage(); if(typeof renderHomePage==='function')renderHomePage(); renderEditProgram();" style="padding:0.5rem;border-radius:8px;background:var(--bg);color:var(--text);border:1px solid var(--border)">
+      <div style="font-size:0.72rem;color:var(--accent);font-weight:600;margin-top:0.5rem">${(function(){var w=getPostpartumWeeks();var p=getPostpartumPhase();var manual=localStorage.getItem('ffp_postnatal_phase');if(manual)return'Phase set manually → '+(p==='0-6wk'?'Phase 1 (Recovery)':p==='6-12wk'?'Phase 2 (Rebuild)':'Phase 3 (Progressive)');return w===null?'Set your delivery date, or pick a phase below.':('You are ~'+w+' weeks postpartum → '+(p==='0-6wk'?'Phase 1 (Recovery)':p==='6-12wk'?'Phase 2 (Rebuild)':'Phase 3 (Progressive)'));})()}</div>
+      <div style="font-size:0.68rem;color:var(--muted);margin-top:0.6rem;margin-bottom:0.3rem">Or set your phase manually:</div>
+      <div style="display:flex;gap:0.35rem;flex-wrap:wrap">
+        ${['0-6wk','6-12wk','12wk+'].map(function(pk){var lbl=pk==='0-6wk'?'Phase 1':pk==='6-12wk'?'Phase 2':'Phase 3';var on=localStorage.getItem('ffp_postnatal_phase')===pk;return '<button onclick="setPostnatalPhase(\''+pk+'\'); if(typeof updateWorkoutsPage===\'function\')updateWorkoutsPage(); renderEditProgram();" class="btn btn-sm '+(on?'':'btn-outline')+'" style="flex:1;min-width:80px;font-size:0.72rem">'+lbl+'</button>';}).join('')}
+        <button onclick="setPostnatalPhase(''); if(typeof updateWorkoutsPage==='function')updateWorkoutsPage(); renderEditProgram();" class="btn btn-sm ${localStorage.getItem('ffp_postnatal_phase')?'btn-outline':''}" style="flex:1;min-width:80px;font-size:0.72rem">Auto (date)</button>
+      </div>
+    </div>`:''}
+    ${(style==='prenatal')?`<div style="margin-bottom:0.75rem;padding:0.75rem;border:1px solid var(--border);border-radius:10px;background:var(--surface2)">
+      <div style="font-weight:700;font-size:0.82rem;margin-bottom:0.35rem">📅 Due date (optional)</div>
+      <div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.5rem">Milton uses this to show your current trimester's workouts. Leave blank to see all trimesters.</div>
+      <input type="date" value="${localStorage.getItem('ffp_due_date')||''}" onchange="setDueDate(this.value); if(typeof updateWorkoutsPage==='function')updateWorkoutsPage(); if(typeof renderHomePage==='function')renderHomePage(); renderEditProgram();" style="padding:0.5rem;border-radius:8px;background:var(--bg);color:var(--text);border:1px solid var(--border)">
+      <div style="font-size:0.72rem;color:var(--accent);font-weight:600;margin-top:0.5rem">${(function(){var t=getPrenatalTrimester();var manual=localStorage.getItem('ffp_prenatal_trimester');return t?((manual?'Set manually → ':'')+'Trimester '+t):'Set your due date, or pick a trimester below.';})()}</div>
+      <div style="font-size:0.68rem;color:var(--muted);margin-top:0.6rem;margin-bottom:0.3rem">Or set your trimester manually:</div>
+      <div style="display:flex;gap:0.35rem;flex-wrap:wrap">
+        ${['1','2','3'].map(function(t){var on=localStorage.getItem('ffp_prenatal_trimester')===t;return '<button onclick="setPrenatalTrimester(\''+t+'\'); if(typeof updateWorkoutsPage===\'function\')updateWorkoutsPage(); renderEditProgram();" class="btn btn-sm '+(on?'':'btn-outline')+'" style="flex:1;min-width:70px;font-size:0.72rem">T'+t+'</button>';}).join('')}
+        <button onclick="setPrenatalTrimester(''); if(typeof updateWorkoutsPage==='function')updateWorkoutsPage(); renderEditProgram();" class="btn btn-sm ${localStorage.getItem('ffp_prenatal_trimester')?'btn-outline':''}" style="flex:1;min-width:70px;font-size:0.72rem">Auto</button>
+      </div>
+    </div>`:''}
+    <div style="font-size:0.66rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin:0.9rem 0 0.45rem">Experience Level</div>
+    <p style="font-size:0.75rem;color:var(--muted);margin-bottom:0.5rem">Sets how exercises are selected. Barbell lifts are reserved for Advanced; Beginner &amp; Intermediate get safe non-barbell regressions.</p>
+    <div id="experience-control" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.5rem"></div>
+    <div style="font-size:0.66rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin:0.9rem 0 0.45rem">Sport Seasons</div>
+    <p style="font-size:0.75rem;color:var(--muted);margin-bottom:0.5rem">Add your competition season(s). Milton periodizes automatically — Muscular Endurance → Hypertrophy → Strength → Power — so you peak for Power in-season and build the base off-season.</p>
+    <div id="seasons-control"></div>
+    <div style="font-size:0.66rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin:0.9rem 0 0.45rem">Training Mode</div>
+    <p style="font-size:0.75rem;color:var(--muted);margin-bottom:0.5rem">Sets the rep ranges &amp; intensity of your program. Same exercises — different emphasis. Great for switching to hypertrophy in the off-season and saving power for in-season.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.35rem">${modeBtns}</div>
+    <div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.5rem">${modeStatus}</div>
     <div onclick="askCoachForStyle()" style="background:rgba(45,122,95,0.08);border:1px dashed var(--accent);border-radius:10px;padding:0.7rem 0.85rem;margin-bottom:0.9rem;cursor:pointer;display:flex;align-items:center;gap:0.6rem">
       <div style="font-size:1.2rem">💬</div>
       <div style="flex:1">
@@ -15736,6 +16355,13 @@ function deleteSection(wi, sxi){
   saveActiveProgram(prog);
   renderEditProgram();
 }
+function toggleMaternityPreview(){
+  try{
+    var on=localStorage.getItem('ffp_show_maternity')==='1';
+    localStorage.setItem('ffp_show_maternity', on?'0':'1');
+    if(typeof renderEditProgram==='function') renderEditProgram();
+  }catch(e){}
+}
 function changeProgramStyle(style){
   setTrainingStyle(style);
   renderEditProgram();
@@ -15876,13 +16502,297 @@ function equipToggleBodyweightOnly(){
   if(typeof renderHomePage==='function') renderHomePage();
 }
 
+function _workoutToText(wo, woNum){
+  if(!wo) return '';
+  const ph=(typeof PHASES!=='undefined'&&PHASES[currentPhase])?PHASES[currentPhase]:{sets:'3',reps:'8-12',label:currentPhase};
+  const lines=[];
+  const RULE='━━━━━━━━━━━━━';
+  const phaseLabel=(ph.label||currentPhase||'').toString();
+  const typeLabel=(wo.type||'').toString();
+  // ── Compact branded header ──
+  lines.push('💪 MILTON');
+  lines.push(RULE);
+  lines.push((wo.label||('Workout '+woNum)));
+  const meta=['W'+woNum+'/12', typeLabel, phaseLabel].filter(Boolean).join(' · ');
+  lines.push(meta);
+  // Warm-up (cardio) if present
+  if(wo.warmup && (wo.warmup.cardio||wo.warmup.duration)){
+    lines.push('');
+    lines.push('🔥 Warm-up: '+[wo.warmup.cardio,wo.warmup.duration].filter(Boolean).join(', '));
+  }
+  lines.push('');
+  const weightedEquip=['BB','DB','KB','Cable','Machine','Smith Machine','EZ Curl Bar','Trap/Specialty Bar','Hex Bar'];
+  (wo.sections||[]).forEach((s)=>{
+    const origLift=s.lift||s.exercise||s.head||'';
+    const override=(typeof getActiveExercise==='function')?getActiveExercise(wo.id,s.head,origLift):null;
+    const equipOverride=(typeof getActiveEquipment==='function')?getActiveEquipment(wo.id,s.head,origLift,null):null;
+    let adapted={equipment:s.equipment,exercise:s.exercise||s.lift,swapped:false};
+    if(typeof adaptSectionToEquipment==='function' && !equipOverride && !override){ adapted=adaptSectionToEquipment(s); }
+    const ex=override||adapted.exercise||s.exercise||s.lift||s.head||'';
+    const curEquip=equipOverride||adapted.equipment||s.equipment||'';
+    const isWeighted=weightedEquip.some(eq=>(curEquip||'').startsWith(eq));
+    // Build a plain prescription string
+    let presc='';
+    try{
+      if(typeof isSpeedAgility==='function' && isSpeedAgility(s)) presc=`${ph.sets} sets × ${(typeof distanceFromNote==='function'?distanceFromNote(s.note):'')}`;
+      else if(typeof isTimedNote==='function' && isTimedNote(s.note)) presc=`${ph.sets} sets × ${(typeof timeFromNote==='function'?timeFromNote(s.note):'')}`;
+      else if(typeof isPlyo==='function' && isPlyo(s)) presc=`${ph.sets} sets × 8–10 reps`;
+      else if(typeof isConditioningNote==='function' && isConditioningNote(s.note)) presc=s.note;
+      else if(isWeighted){
+        // weight range from max/estimate
+        const mx=(maxes&&maxes[ex]&&maxes[ex].oneRM)?maxes[ex].oneRM:((typeof estimateMax==='function')?estimateMax(ex,curEquip):null);
+        if(mx){
+          const sets=(typeof getPyramidSets==='function')?getPyramidSets(currentPhase,mx,/^BB|barbell/i.test(curEquip)):null;
+          if(sets&&sets.length){
+            const work=sets.filter(x=>!x.warmup);
+            const ws=work.map(x=>`${x.weight}lb×${x.reps}`).join(', ');
+            presc=`${ws}`;
+          } else presc=`${ph.sets} sets × ${ph.reps} reps`;
+        } else presc=`${ph.sets} sets × ${ph.reps} reps (set your max)`;
+      } else {
+        const _t=String(ph.sets||'');
+        presc=/warm-?up|max|assess/i.test(_t)?'3 sets × 12–15 reps':`${ph.sets} sets × ${ph.reps} reps`;
+      }
+    }catch(e){ presc=`${ph.sets} sets × ${ph.reps} reps`; }
+    // Compact: exercise name on its own line; prescription + equipment on the next.
+    lines.push('• '+ex);
+    var detail=presc||'';
+    if(curEquip) detail = detail ? (detail+'  ('+curEquip+')') : ('('+curEquip+')');
+    if(detail) lines.push('   '+detail);
+  });
+  lines.push('');
+  lines.push(RULE);
+  lines.push('Built with 💪 Milton');
+  lines.push('Get Milton');
+  return lines.join('\n');
+}
+function _findWorkout(woId, woNum){
+  let wo=null;
+  try{
+    const prog=(typeof getActiveProgram==='function')?getActiveProgram():null;
+    if(prog && prog.length){
+      wo = prog.find(w=>String(w.id)===String(woId));
+      if(!wo && woNum) wo = prog[(parseInt(woNum)-1)];
+    }
+  }catch(e){}
+  if(!wo && typeof WORKOUT_STRUCTURE!=='undefined'){
+    try{ wo=WORKOUT_STRUCTURE.find(w=>String(w.id)===String(woId)) || WORKOUT_STRUCTURE[(parseInt(woNum)-1)]; }catch(e){}
+  }
+  return wo;
+}
+function _getMiltonLogo(){
+  try{ var img=document.querySelector('img[alt="Milton\u2019s Brain"]')||document.querySelector('img[alt=\'Milton\\u2019s Brain\']'); if(img&&img.src) return img.src; }catch(e){}
+  try{ var im2=document.querySelector('img[src^="data:image/png"]'); if(im2) return im2.src; }catch(e){}
+  return null;
+}
+// Build a branded PNG of the workout on a canvas. Returns a Promise<canvas>.
+function _workoutToImage(wo, woNum){
+  return new Promise(function(resolve){
+    var ph=(typeof PHASES!=='undefined'&&PHASES[currentPhase])?PHASES[currentPhase]:{sets:'3',reps:'8-12',label:currentPhase};
+    // Gather the same rows the text builder uses.
+    var rows=[]; // {ex, tag, equip, presc}
+    var weightedEquip=['BB','DB','KB','Cable','Machine','Smith Machine','EZ Curl Bar','Trap/Specialty Bar','Hex Bar'];
+    (wo.sections||[]).forEach(function(s){
+      var origLift=s.lift||s.exercise||s.head||'';
+      var override=(typeof getActiveExercise==='function')?getActiveExercise(wo.id,s.head,origLift):null;
+      var equipOverride=(typeof getActiveEquipment==='function')?getActiveEquipment(wo.id,s.head,origLift,null):null;
+      var adapted={equipment:s.equipment,exercise:s.exercise||s.lift,swapped:false};
+      if(typeof adaptSectionToEquipment==='function' && !equipOverride && !override){ adapted=adaptSectionToEquipment(s); }
+      var ex=override||adapted.exercise||s.exercise||s.lift||s.head||'';
+      var curEquip=equipOverride||adapted.equipment||s.equipment||'';
+      var isWeighted=weightedEquip.some(function(eq){return (curEquip||'').startsWith(eq);});
+      var presc='';
+      try{
+        if(typeof isSpeedAgility==='function'&&isSpeedAgility(s)) presc=ph.sets+' sets × '+(typeof distanceFromNote==='function'?distanceFromNote(s.note):'');
+        else if(typeof isTimedNote==='function'&&isTimedNote(s.note)) presc=ph.sets+' sets × '+(typeof timeFromNote==='function'?timeFromNote(s.note):'');
+        else if(typeof isPlyo==='function'&&isPlyo(s)) presc=ph.sets+' sets × 8–10 reps';
+        else if(typeof isConditioningNote==='function'&&isConditioningNote(s.note)) presc=s.note;
+        else if(isWeighted){
+          var mx=(maxes&&maxes[ex]&&maxes[ex].oneRM)?maxes[ex].oneRM:((typeof estimateMax==='function')?estimateMax(ex,curEquip):null);
+          if(mx){ var sets=(typeof getPyramidSets==='function')?getPyramidSets(currentPhase,mx,/^BB|barbell/i.test(curEquip)):null;
+            if(sets&&sets.length){ presc=sets.filter(function(x){return !x.warmup;}).map(function(x){return x.weight+'lb×'+x.reps;}).join(', '); }
+            else presc=ph.sets+' sets × '+ph.reps+' reps'; }
+          else presc=ph.sets+' sets × '+ph.reps+' reps';
+        } else { var _t=String(ph.sets||''); presc=/warm-?up|max|assess/i.test(_t)?'3 sets × 12–15 reps':(ph.sets+' sets × '+ph.reps+' reps'); }
+      }catch(e){ presc=ph.sets+' sets × '+ph.reps+' reps'; }
+      rows.push({ex:ex, tag:(s.head||''), equip:curEquip, presc:presc});
+    });
+
+    // Canvas sizing (portrait, high-res for sharp text)
+    var W=1080, pad=64, scale=2;
+    var headerH=340, rowH=118, warmH=(wo.warmup&&(wo.warmup.cardio||wo.warmup.duration))?150:0, footerH=200;
+    var H=headerH+warmH+40+rows.length*rowH+footerH;
+    var cv=document.createElement('canvas'); cv.width=W*scale; cv.height=H*scale;
+    var ctx=cv.getContext('2d'); ctx.scale(scale,scale);
+    // Background
+    var GREEN='#2d7a5f', DARK='#0f1a16', LIGHT='#e8f1ed', MUT='#8aa79b';
+    ctx.fillStyle=DARK; ctx.fillRect(0,0,W,H);
+    // Top accent bar
+    ctx.fillStyle=GREEN; ctx.fillRect(0,0,W,10);
+
+    function draw(logo){
+      var y=64;
+      // Logo (left) + brand
+      if(logo){ try{ ctx.drawImage(logo, pad, y, 88, 88); }catch(e){} }
+      ctx.fillStyle='#ffffff'; ctx.font='800 44px Arial, sans-serif'; ctx.textBaseline='top';
+      ctx.fillText('MILTON', pad+(logo?108:0), y+6);
+      ctx.fillStyle=GREEN; ctx.font='600 22px Arial, sans-serif';
+      ctx.fillText('YOUR AI STRENGTH COACH', pad+(logo?108:0), y+56);
+      y+=118;
+      // Divider
+      ctx.strokeStyle='rgba(255,255,255,0.12)'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(W-pad,y); ctx.stroke();
+      y+=34;
+      // Workout title
+      ctx.fillStyle='#ffffff'; ctx.font='800 38px Arial, sans-serif';
+      var title=(wo.label||('Workout '+woNum)).toUpperCase();
+      // wrap title if long
+      wrapText(ctx,title,pad,y,W-pad*2,44); y+= (ctx._lastLines||1)*44 + 8;
+      ctx.fillStyle=MUT; ctx.font='500 24px Arial, sans-serif';
+      var meta=['Workout '+woNum+' of 12', (wo.type?wo.type+' Day':''), (ph.label?ph.label+' phase':'')].filter(Boolean).join('   ·   ');
+      ctx.fillText(meta, pad, y); y+=52;
+      // Warm-up
+      if(warmH){
+        ctx.fillStyle=GREEN; ctx.font='800 22px Arial, sans-serif'; ctx.fillText('🔥  WARM-UP', pad, y); y+=34;
+        ctx.fillStyle=LIGHT; ctx.font='400 26px Arial, sans-serif';
+        ctx.fillText([wo.warmup.cardio,wo.warmup.duration].filter(Boolean).join('  ·  '), pad, y); y+=60;
+      }
+      // Work header
+      ctx.fillStyle=GREEN; ctx.font='800 22px Arial, sans-serif'; ctx.fillText('🏋  THE WORK', pad, y); y+=44;
+      // Rows
+      rows.forEach(function(r){
+        // card bg
+        ctx.fillStyle='rgba(255,255,255,0.04)';
+        roundRect(ctx, pad, y, W-pad*2, rowH-18, 14); ctx.fill();
+        ctx.fillStyle='#ffffff'; ctx.font='700 28px Arial, sans-serif';
+        var nm=r.ex + (r.equip?('   ·   '+r.equip):'');
+        ctx.fillText(clip(ctx,nm,W-pad*2-40), pad+22, y+16);
+        ctx.fillStyle=MUT; ctx.font='500 21px Arial, sans-serif';
+        var sub=(r.tag?r.tag+'   —   ':'')+r.presc;
+        ctx.fillText(clip(ctx,sub,W-pad*2-40), pad+22, y+54);
+        y+=rowH;
+      });
+      y+=10;
+      ctx.strokeStyle='rgba(255,255,255,0.12)'; ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(W-pad,y); ctx.stroke(); y+=34;
+      // Footer / marketing
+      ctx.fillStyle=LIGHT; ctx.font='600 26px Arial, sans-serif';
+      ctx.fillText('Programmed around YOU by 💪 Milton', pad, y); y+=40;
+      ctx.fillStyle=GREEN; ctx.font='800 30px Arial, sans-serif';
+      ctx.fillText('Get Milton', pad, y);
+      resolve(cv);
+    }
+    // helpers
+    function roundRect(c,x,yy,w,hh,r){ c.beginPath(); c.moveTo(x+r,yy); c.arcTo(x+w,yy,x+w,yy+hh,r); c.arcTo(x+w,yy+hh,x,yy+hh,r); c.arcTo(x,yy+hh,x,yy,r); c.arcTo(x,yy,x+w,yy,r); c.closePath(); }
+    function clip(c,t,maxw){ if(c.measureText(t).width<=maxw) return t; var e='…'; while(t.length>1 && c.measureText(t+e).width>maxw) t=t.slice(0,-1); return t+e; }
+    function wrapText(c,t,x,yy,maxw,lh){ var words=t.split(' '),line='',lines=0; for(var i=0;i<words.length;i++){ var test=line?line+' '+words[i]:words[i]; if(c.measureText(test).width>maxw && line){ c.fillText(line,x,yy+lines*lh); line=words[i]; lines++; } else line=test; } c.fillText(line,x,yy+lines*lh); c._lastLines=lines+1; }
+
+    var src=_getMiltonLogo();
+    if(src){ var im=new Image(); im.onload=function(){ draw(im); }; im.onerror=function(){ draw(null); }; im.src=src; }
+    else draw(null);
+  });
+}
+function shareWorkout(woId, woNum){
+  const wo=_findWorkout(woId, woNum);
+  if(!wo){ alert('Could not find this workout to share.'); return; }
+  let text='';
+  try{ text=_workoutToText(wo, woNum||wo.num||''); }catch(e){ text=(wo.label||'Workout'); }
+  const title=`${wo.label||'Workout'} — Milton`;
+  // Always show a visible modal with the full text + explicit actions. This never fails silently.
+  let ov=document.getElementById('share-workout-modal');
+  if(ov) ov.remove();
+  ov=document.createElement('div');
+  ov.id='share-workout-modal';
+  ov.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;padding:1rem';
+  const esc=(t)=>t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  ov.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;max-width:520px;width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="padding:0.9rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div style="font-weight:800;font-size:1rem">Share Workout</div>
+      <button onclick="document.getElementById('share-workout-modal').remove()" style="background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <textarea id="share-workout-text" readonly style="flex:1;min-height:220px;margin:0;padding:0.9rem 1rem;border:none;background:var(--surface2);color:var(--text);font-size:0.82rem;line-height:1.5;font-family:inherit;white-space:pre-wrap;resize:none;overflow:auto">${esc(text)}</textarea>
+    <div style="padding:0.9rem 1rem;border-top:1px solid var(--border);display:flex;gap:0.5rem;flex-wrap:wrap">
+      <button class="btn" style="flex:1;min-width:110px" onclick="_shareWorkoutImage()">🖼 Image</button>
+      <button class="btn btn-outline" style="flex:1;min-width:100px" onclick="_shareWorkoutSend()">↗ Text</button>
+      <button id="share-copy-btn" class="btn btn-outline" style="flex:1;min-width:100px" onclick="_shareWorkoutCopy()">📋 Copy</button>
+    </div>
+    <div style="padding:0 1rem 0.8rem;font-size:0.68rem;color:var(--muted);text-align:center">Tip: you can also long-press the text above to select and copy it manually.</div>
+  </div>`;
+  ov.addEventListener('click',(e)=>{ if(e.target===ov) ov.remove(); });
+  document.body.appendChild(ov);
+  window._shareWorkoutPayload={title:title, text:text, wo:wo, woNum:(woNum||wo.num||'')};
+}
+function _shareCopyFeedback(ok){
+  var btn=document.getElementById('share-copy-btn');
+  if(btn){ var orig=btn.getAttribute('data-orig')||btn.innerHTML; btn.setAttribute('data-orig',orig);
+    btn.innerHTML= ok?'✓ Copied!':'Select & copy ↑'; setTimeout(function(){ btn.innerHTML=orig; },2000); }
+}
+function _shareDoCopy(){
+  const ta=document.getElementById('share-workout-text');
+  const p=window._shareWorkoutPayload||{};
+  // Primary: select the textarea contents and execCommand (works in most webviews).
+  try{
+    if(ta){
+      ta.removeAttribute('readonly');
+      ta.focus(); ta.select(); ta.setSelectionRange(0, (p.text||ta.value||'').length);
+      var ok=false;
+      try{ ok=document.execCommand('copy'); }catch(e){ ok=false; }
+      ta.setAttribute('readonly','readonly');
+      if(ok){ return true; }
+    }
+  }catch(e){}
+  // Secondary: async clipboard API (may be blocked in sandbox, so this is a bonus).
+  try{ if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(p.text); return true; } }catch(e){}
+  return false;
+}
+async function _shareWorkoutSend(){
+  const p=window._shareWorkoutPayload||{};
+  if(navigator.share){
+    try{ await navigator.share({title:p.title, text:p.text}); return; }
+    catch(e){ if(e && e.name==='AbortError') return; /* else fall through to copy */ }
+  }
+  // No native share (or it failed) → copy instead.
+  const ok=_shareDoCopy();
+  _shareCopyFeedback(ok);
+}
+async function _shareWorkoutImage(){
+  var p=window._shareWorkoutPayload||{};
+  if(!p.wo){ if(typeof showStackToast==='function') showStackToast('Could not build image.'); return; }
+  try{
+    var canvas=await _workoutToImage(p.wo, p.woNum);
+    canvas.toBlob(async function(blob){
+      if(!blob){ if(typeof showStackToast==='function') showStackToast('Image build failed.'); return; }
+      var file=new File([blob], 'milton-workout.png', {type:'image/png'});
+      // Try native share with the image file first
+      try{
+        if(navigator.canShare && navigator.canShare({files:[file]}) && navigator.share){
+          await navigator.share({files:[file], title:p.title||'Milton Workout'});
+          return;
+        }
+      }catch(e){ if(e && e.name==='AbortError') return; }
+      // Fallback: open the image in a new tab / trigger download so they can save & send it
+      try{
+        var url=URL.createObjectURL(blob);
+        var a=document.createElement('a'); a.href=url; a.download='milton-workout.png'; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+        if(typeof showStackToast==='function') showStackToast('Image saved — attach it to your message.');
+      }catch(e2){
+        // last resort: show the image inline to long-press
+        var img=document.createElement('img'); img.src=canvas.toDataURL('image/png'); img.style.cssText='max-width:100%;border-radius:12px';
+        var box=document.getElementById('share-workout-text'); if(box&&box.parentNode){ box.parentNode.insertBefore(img, box); }
+      }
+    }, 'image/png');
+  }catch(e){ if(typeof showStackToast==='function') showStackToast('Could not build image.'); }
+}
+function _shareWorkoutCopy(){
+  const ok=_shareDoCopy();
+  _shareCopyFeedback(ok);
+}
 function renderWorkoutDetail(wo,container,opts){
   opts=opts||{};
   if(!wo){container.innerHTML='<div class="alert alert-warning">Workout not found.</div>';return;}
   const ph=PHASES[currentPhase]||PHASES.strength;
   const wup=wo.warmup||{};
   const woNum=wo.num||(WORKOUT_STRUCTURE.indexOf(wo)+1);
-  const weightedEquip=['BB','DB','KB'];
+  const weightedEquip=['BB','DB','KB','Cable','Machine','Smith Machine','EZ Curl Bar','Trap/Specialty Bar','Hex Bar'];
   const sectionsHTML=(wo.sections||[]).map((s,si)=>{
     const origLift=s.lift||s.exercise||s.head||'';
     const override=(typeof getActiveExercise==='function') ? getActiveExercise(wo.id,s.head,origLift) : null;
@@ -15892,9 +16802,11 @@ function renderWorkoutDetail(wo,container,opts){
     if(typeof adaptSectionToEquipment==='function' && !equipOverride && !override){
       adapted = adaptSectionToEquipment(s);
     }
-    const hasSwap=!!(override && override!==origLift) || adapted.swapped;
     const ex=override || adapted.exercise || s.exercise || s.lift || s.head || '';
     const curEquip=equipOverride || adapted.equipment || s.equipment || '';
+    const origEquipRaw=s.equipment||'';
+    const nameSwapped=!!(override && override!==origLift) || (adapted.swapped && adapted.exercise && adapted.exercise!==origLift);
+    const equipSwappedOnly=!nameSwapped && adapted.swapped && curEquip && origEquipRaw && curEquip!==origEquipRaw;
     const isWeighted=weightedEquip.some(eq=>(curEquip||'').startsWith(eq));
     const pyramidHTML=isWeighted?renderPyramidTable(ex,currentPhase,curEquip):'';
     const wid=(wo.id||'').replace(/'/g,"\\'"), sh=(s.head||'').replace(/'/g,"\\'"), ol=origLift.replace(/'/g,"\\'");
@@ -15921,13 +16833,13 @@ function renderWorkoutDetail(wo,container,opts){
       </div>
       <div id="ex-${uid}" class="change-pop" style="display:none"></div>
       <div id="eq-${uid}" class="change-pop" style="display:none"></div>
-      ${hasSwap?`<div style="font-size:0.72rem;color:var(--accent);font-weight:600">↻ Swapped from: ${origLift}</div>`:''}
+      ${nameSwapped?`<div style="font-size:0.72rem;color:var(--accent);font-weight:600">↻ Swapped from: ${origLift}</div>`:(equipSwappedOnly?`<div style="font-size:0.72rem;color:var(--accent);font-weight:600">↻ Equipment changed to ${curEquip} (from ${origEquipRaw})</div>`:'')}
       ${noteHTML}
       ${presc}
       ${cuesHTML}
     </div>`;
   }).join('');
-  container.innerHTML=`${(!opts.hideDisclaimer && typeof maternityDisclaimerHTML==='function')?maternityDisclaimerHTML():''}<div class="card" style="margin-top:0.75rem"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem"><div><div style="font-size:0.65rem;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">Workout ${woNum} of 12</div><div style="font-size:1.1rem;font-weight:800;color:var(--text)">${wo.label}</div><div style="font-size:0.8rem;font-weight:700;color:var(--accent)">${wo.type} Day</div></div></div><div style="background:var(--surface2);border-radius:10px;padding:0.75rem;margin-bottom:0.75rem"><div style="font-size:0.68rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:0.5rem">🔥 Warm-Up</div><div style="display:flex;flex-direction:column;gap:0.5rem"><div><span style="font-size:0.72rem;font-weight:700;color:var(--muted)">Cardio: </span><span style="font-size:0.85rem;font-weight:600">${wup.cardio||''}</span> <span style="font-size:0.75rem;color:var(--muted)">· ${wup.duration||''}</span></div><div><span style="font-size:0.72rem;font-weight:700;color:var(--muted)">Massage Gun: </span><span style="font-size:0.82rem;color:var(--accent);font-weight:500">All muscles being trained today + any sore areas.</span></div><div><div style="font-size:0.72rem;font-weight:700;color:var(--muted);margin-bottom:0.25rem">Mobility (specific to today\u2019s lifts):</div><div style="display:flex;flex-direction:column;gap:0.3rem">${getWarmupMobilityForWorkout(wo).map(m=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem"><span style="font-size:0.78rem">${m}</span>${typeof videoBtnHTML==='function'?videoBtnHTML(m):''}</div>`).join('')}</div></div></div></div>${sectionsHTML}${(typeof cardioFinisherHTML==='function'?cardioFinisherHTML(wo):'')}${(typeof sportSAPHTML==='function'?sportSAPHTML(wo):'')}${(typeof sportSCFinisherHTML==='function'?sportSCFinisherHTML(wo):'')}${renderWorkoutCompleteSection(wo,woNum)}</div>`;
+  container.innerHTML=`${(!opts.hideDisclaimer && typeof maternityDisclaimerHTML==='function')?maternityDisclaimerHTML():''}<div class="card" style="margin-top:0.75rem"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem"><div><div style="font-size:0.65rem;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">Workout ${woNum} of 12</div><div style="font-size:1.1rem;font-weight:800;color:var(--text)">${wo.label}</div><div style="font-size:0.8rem;font-weight:700;color:var(--accent)">${wo.type} Day</div></div><button onclick="shareWorkout('${wo.id||''}',${woNum})" class="btn btn-sm" style="padding:0.4rem 0.7rem;font-size:0.75rem;font-weight:700;white-space:nowrap">↗ Share</button></div><div style="background:var(--surface2);border-radius:10px;padding:0.75rem;margin-bottom:0.75rem"><div style="font-size:0.68rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:0.5rem">🔥 Warm-Up</div><div style="display:flex;flex-direction:column;gap:0.5rem"><div><span style="font-size:0.72rem;font-weight:700;color:var(--muted)">Cardio: </span><span style="font-size:0.85rem;font-weight:600">${wup.cardio||''}</span> <span style="font-size:0.75rem;color:var(--muted)">· ${wup.duration||''}</span></div><div><span style="font-size:0.72rem;font-weight:700;color:var(--muted)">Massage Gun: </span><span style="font-size:0.82rem;color:var(--accent);font-weight:500">All muscles being trained today + any sore areas.</span></div><div><div style="font-size:0.72rem;font-weight:700;color:var(--muted);margin-bottom:0.25rem">Mobility (specific to today\u2019s lifts):</div><div style="display:flex;flex-direction:column;gap:0.3rem">${getWarmupMobilityForWorkout(wo).map(m=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem"><span style="font-size:0.78rem">${m}</span>${typeof videoBtnHTML==='function'?videoBtnHTML(m):''}</div>`).join('')}</div></div></div></div>${sectionsHTML}${(typeof cardioFinisherHTML==='function'?cardioFinisherHTML(wo):'')}${(typeof sportSAPHTML==='function'?sportSAPHTML(wo):'')}${(typeof sportSCFinisherHTML==='function'?sportSCFinisherHTML(wo):'')}${renderWorkoutCompleteSection(wo,woNum)}</div>`;
 }
 
 // ── Workout completion + "how did it feel" feedback ───────────────────────
@@ -15951,6 +16863,26 @@ function renderWorkoutCompleteSection(wo, woNum){
   </div>`;
 }
 
+function _toastContainer(){
+  var c=document.getElementById('ffp-toast-stack');
+  if(!c){
+    c=document.createElement('div');
+    c.id='ffp-toast-stack';
+    c.style.cssText='position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:0.5rem;align-items:center;max-width:92%;width:auto;pointer-events:none';
+    document.body.appendChild(c);
+  }
+  return c;
+}
+function showStackToast(msg, ms){
+  try{
+    var c=_toastContainer();
+    var t=document.createElement('div');
+    t.style.cssText='background:var(--surface);border:2px solid var(--accent);border-radius:14px;padding:0.85rem 1.1rem;box-shadow:0 8px 32px rgba(0,0,0,0.4);text-align:center;font-size:0.82rem;font-weight:600;animation:slideDown 0.35s ease;pointer-events:auto';
+    t.textContent=msg;
+    c.appendChild(t);
+    setTimeout(function(){ t.style.opacity='0'; t.style.transition='opacity .5s'; setTimeout(function(){ if(t.parentNode) t.remove(); if(c.childElementCount===0 && c.parentNode) c.remove(); },500); }, ms||3500);
+  }catch(e){}
+}
 function completeWorkout(type, woNum, feel){
   const completed = JSON.parse(localStorage.getItem('ffp_completed_workouts')||'[]');
   completed.push({ id:'W'+woNum, type, feel, date:new Date().toISOString() });
@@ -15969,42 +16901,41 @@ function completeWorkout(type, woNum, feel){
     : feel==='brutal'
     ? "Logged! That was a grind — make today's recovery count and sleep well. 🛌"
     : "Logged! Right in the sweet spot. Consistency like this is what builds results. 🔥";
-  if(typeof showBadgeToast==='function'){
-    const t=document.createElement('div');
-    t.style.cssText='position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:9999;background:var(--surface);border:2px solid var(--accent);border-radius:14px;padding:0.85rem 1.1rem;box-shadow:0 8px 32px rgba(0,0,0,0.4);max-width:90%;text-align:center;font-size:0.82rem;font-weight:600;animation:slideDown 0.4s ease';
-    t.textContent=msg;document.body.appendChild(t);
-    setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .5s';setTimeout(()=>t.remove(),500);},3500);
-  }
+  showStackToast(msg);
   updateWorkoutsPage();
 }
 
 
 function estimate1RM(weight,reps){if(reps===1)return weight;return Math.round(weight*(1+reps/30));}
 function getPyramidSets(phaseKey,oneRepMax,isBarbell){
-  // Working-set prescriptions matched to the authored phase science:
-  //  strength 85–95% ×3–7 · hypertrophy 67–80% ×8–12 · endurance 55–65% ×15–25 · power 30–60% ×3–6 (explosive)
-  // Each phase = short warm-up ramp (marked 'warmup') + the phase's working sets.
-  const P={
-    hypertrophy:[
-      {pct:0.50,reps:'8',warmup:true},{pct:0.60,reps:'6',warmup:true},
-      {pct:0.70,reps:'12'},{pct:0.75,reps:'10'},{pct:0.78,reps:'8'}],
-    endurance:[
-      {pct:0.45,reps:'10',warmup:true},
-      {pct:0.55,reps:'20'},{pct:0.60,reps:'18'},{pct:0.62,reps:'15'}],
-    strength:[
-      {pct:0.55,reps:'5',warmup:true},{pct:0.70,reps:'3',warmup:true},
-      {pct:0.85,reps:'6'},{pct:0.88,reps:'4'},{pct:0.90,reps:'3'}],
-    maxassess:[
-      {pct:0.50,reps:'5',warmup:true},{pct:0.70,reps:'3',warmup:true},
-      {pct:0.85,reps:'2'},{pct:0.92,reps:'1'},{pct:0.97,reps:'1'}],
-    power:[
-      {pct:0.40,reps:'5',warmup:true},
-      {pct:0.45,reps:'5'},{pct:0.50,reps:'4'},{pct:0.55,reps:'3'}],
-    competition:[
-      {pct:0.55,reps:'3',warmup:true},{pct:0.75,reps:'2',warmup:true},
-      {pct:0.85,reps:'2'},{pct:0.90,reps:'1'},{pct:0.95,reps:'1'}]
+  // WORKING sets only — matched to phase science:
+  //  strength 85–90% ×3–6 · hypertrophy 70–78% ×8–12 · endurance 55–62% ×15–20
+  //  power 45–55% ×3–5 (explosive) · maxassess/competition build to a heavy top set.
+  const WORK={
+    hypertrophy:[{pct:0.67,reps:'12'},{pct:0.74,reps:'10'},{pct:0.80,reps:'8'}],
+    endurance:[{pct:0.55,reps:'20'},{pct:0.60,reps:'18'},{pct:0.65,reps:'15'}],
+    strength:[{pct:0.85,reps:'6'},{pct:0.88,reps:'4'},{pct:0.90,reps:'3'}],
+    maxassess:[{pct:0.85,reps:'2'},{pct:0.92,reps:'1'},{pct:0.97,reps:'1'}],
+    power:[{pct:0.45,reps:'5'},{pct:0.50,reps:'4'},{pct:0.55,reps:'3'}],
+    competition:[{pct:0.85,reps:'2'},{pct:0.90,reps:'1'},{pct:0.95,reps:'1'}]
   };
-  const sets=P[phaseKey]||P.hypertrophy;
+  const work=(WORK[phaseKey]||WORK.hypertrophy);
+  const topPct=work[0].pct; // intensity of the FIRST working set (fraction of 1RM)
+
+  // ── WARM-UP RAMP ────────────────────────────────────────────────────────────
+  // Warm-ups are computed FROM the first working set. Each ramp step is a fraction
+  // of the WORKING weight (not 1RM), reps descend as weight climbs, and the number
+  // of ramp sets scales to how heavy the working set is:
+  //   light work (≤55% 1RM) → 1 warm-up · moderate (≤72%) → 2 · heavy (>72%) → 3.
+  // Ramp fractions/reps of the working set: 40%×8 → 60%×5 → 80%×3.
+  const RAMP=[{f:0.40,reps:'8'},{f:0.60,reps:'5'},{f:0.80,reps:'3'}];
+  let nWarm = topPct>0.72 ? 3 : (topPct>0.55 ? 2 : 1);
+  // Use the LAST nWarm ramp steps so a single warm-up is the closest (80%) primer,
+  // two warm-ups are 60%+80%, three are the full 40/60/80 ladder.
+  const ramp = RAMP.slice(RAMP.length-nWarm);
+  const warm = ramp.map(r=>({pct: topPct*r.f, reps:r.reps, warmup:true, note:''}));
+  const sets = warm.concat(work.map(w=>({pct:w.pct, reps:w.reps, warmup:false, note:w.note||''})));
+
   if(!oneRepMax)return sets.map(s=>({reps:s.reps,pct:s.pct,weight:null,warmup:!!s.warmup,note:s.note||''}));
   return sets.map(s=>{
     let w=Math.round(oneRepMax*s.pct/5)*5;
@@ -16015,15 +16946,37 @@ function getPyramidSets(phaseKey,oneRepMax,isBarbell){
 }
 function renderPyramidTable(exercise,phaseKey,curEquip){
   if(!maxes)maxes={};
-  const maxData=maxes[exercise];
+  // Smart max lookup: try the exact name, then normalized variations so a saved
+  // tested max (e.g. "Back Squat") still applies when the program uses a variant
+  // name (e.g. "Barbell Back Squat", "DB Shoulder Press").
+  let maxData = maxes[exercise];
+  if(!maxData){
+    try{
+      // Only strip pure equipment prefixes that don't change the movement or load.
+      // Do NOT strip SA / single-arm / machine / cable — those are DIFFERENT lifts.
+      var norm = function(s){ return (s||'').toLowerCase()
+        .replace(/^(bb|db|kb|barbell|dumbbell|kettlebell)\s+/,'')
+        .replace(/[^a-z0-9]/g,'').trim(); };
+      var want = norm(exercise);
+      for(var k in maxes){
+        if(maxes.hasOwnProperty(k) && maxes[k] && maxes[k].oneRM && norm(k)===want){
+          maxData = maxes[k]; break;
+        }
+      }
+    }catch(e){}
+  }
   let oneRM=maxData?maxData.oneRM:null;
   let estimated=false;
   // Is this a barbell lift? (empty bar = 45 lb, so no prescribed weight can be below that)
-  const isBarbell=/^BB\b|barbell/i.test(curEquip||'') || (typeof MAXABLE_LIFTS!=='undefined' && MAXABLE_LIFTS[exercise] && (MAXABLE_LIFTS[exercise].equipment||[]).some(e=>/barbell|BB/i.test(e)));
+  const _isUni=/\bsa\b|single[- ]?arm|single[- ]?leg|1[- ]?arm|1[- ]?leg|\bsl\b/i.test(exercise||'');
+  // The 45 lb floor is a property of the EQUIPMENT IN USE, not of the lift. A curl on a
+  // barbell floors at 45; the same curl on dumbbells does not. Only the actual current
+  // equipment decides. (MAXABLE equipment list is for max-lookup, not for the floor.)
+  const isBarbell=!_isUni && /^BB\b|barbell|^EZ|ez curl|ez bar/i.test(curEquip||'');
   // No tested max yet → fall back to a SAFE estimated 1RM from the user's profile,
   // so every maxable lift still shows prescribed weights/sets/reps/rest.
   if(!oneRM && typeof estimateMax==='function'){
-    let est=estimateMax(exercise);
+    let est=estimateMax(exercise, curEquip);
     // Barbell floor: the lightest prescribed load (power warm-up ≈ 40% of 1RM) must be ≥ 45 lb.
     // So a barbell lift's estimated 1RM is raised to at least 45 / 0.40 = 112.5 lb.
     if(est && isBarbell) est=Math.max(est, Math.ceil(45/0.40/5)*5); // → ≥115 lb
@@ -16313,6 +17266,20 @@ function renderScheduleEditor(){
       <span style="font-size:0.8rem;font-weight:700;color:${typeColors[t]}">${typeIcons[t]} ${t.charAt(0).toUpperCase()+t.slice(1)}</span>
     </div>`;
   }).join('');
+
+  // Position control: pin which workout number comes next (fixes drift, continues sequence).
+  var pin=(typeof getSequencePin==='function')?getSequencePin():{index:0};
+  var progLen=(typeof getActiveProgram==='function' && getActiveProgram())?getActiveProgram().length:12;
+  var nextNum=((pin.index%progLen)+progLen)%progLen+1;
+  var posHtml='<div style="margin-top:0.9rem;padding:0.75rem;border:1px solid var(--border);border-radius:10px;background:var(--surface2)">'
+    +'<div style="font-weight:700;font-size:0.82rem;margin-bottom:0.4rem">Next workout number</div>'
+    +'<div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.5rem">If your sequence ever looks off, set which workout should come next. Past days aren\'t changed.</div>'
+    +'<div style="display:flex;align-items:center;gap:0.5rem">'
+    +'<button class="btn btn-sm" onclick="nudgeNextWorkout(-1)">-</button>'
+    +'<span style="font-weight:800;color:var(--accent);min-width:60px;text-align:center">#'+nextNum+'</span>'
+    +'<button class="btn btn-sm" onclick="nudgeNextWorkout(1)">+</button>'
+    +'</div></div>';
+  el.insertAdjacentHTML('beforeend', posHtml);
 }
 function cycleScheduleDay(dow){
   const sched=getUserSchedule();
@@ -17317,19 +18284,9 @@ function renderMacroAdjRecs() {
 
 
 function updateTrialBadge() {
-  const start = parseInt(trialStart);
-  const daysElapsed = Math.floor((Date.now() - start) / 86400000);
-  const remaining = Math.max(0, 30 - daysElapsed);
-  document.getElementById('days-remaining').textContent = remaining;
-  const badge = document.getElementById('trialBadge');
-  if (remaining <= 7) {
-    badge.style.background = 'rgba(45,122,95,0.2)';
-    badge.style.borderColor = 'rgba(45,122,95,0.5)';
-    badge.style.color = 'var(--accent)';
-    badge.textContent = `⚠️ ${remaining}d left`;
-  } else {
-    badge.textContent = `🔥 Trial`;
-  }
+  // Trial system removed — badge and countdown are disabled.
+  var badge = document.getElementById('trialBadge');
+  if (badge) badge.style.display = 'none';
 }
 </script>
 
@@ -17353,12 +18310,7 @@ function updateTrialBadge() {
   </div>
 </div>
 <script>
-// Service Worker for offline support
-if('serviceWorker' in navigator){
-  var sw=`const C='trinity-v2';self.addEventListener('install',e=>{self.skipWaiting()});self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(n=>n!==C).map(n=>caches.delete(n)))))});self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(fetch(e.request).then(r=>{var c=r.clone();caches.open(C).then(ca=>ca.put(e.request,c));return r}).catch(()=>caches.match(e.request)))});`;
-  var b=new Blob([sw],{type:'application/javascript'});
-  navigator.serviceWorker.register(URL.createObjectURL(b),{scope:'./'});
-}
+// Service Worker registered separately as sw.js (see head). Old inline SW removed.
 // Install prompts
 var deferred=null;
 window.addEventListener('beforeinstallprompt',function(e){
@@ -17700,6 +18652,140 @@ if(/iphone|ipad|ipod/i.test(navigator.userAgent)&&!window.navigator.standalone&&
     if(notes.length){ window._vaLoopNote=notes.join('<br>')+'<br><span style="color:var(--muted)">See Recovery → Movement for your updated correctives.</span>'; }
   }
   function saveVA(r){ try{ const k='ffp_form_analyses'; const all=JSON.parse(localStorage.getItem(k)||'[]'); all.unshift(r); while(all.length>50)all.pop(); localStorage.setItem(k,JSON.stringify(all)); }catch(e){} }
+})();
+</script>
+
+<script>
+// ══ HEALTH DATA TRACKER ══════════════════════════════════════════════
+window.HD_CATALOG = [{"id": "WR-001", "c": "Wearables", "m": "HRV (rMSSD)", "u": "ms", "g": "higher", "lo": "20", "hi": "120"}, {"id": "WR-002", "c": "Wearables", "m": "Resting Heart Rate", "u": "bpm", "g": "lower", "lo": "38", "hi": "80"}, {"id": "WR-003", "c": "Wearables", "m": "Sleep Duration", "u": "hours", "g": "higher", "lo": "6", "hi": "9"}, {"id": "WR-004", "c": "Wearables", "m": "Sleep Efficiency", "u": "%", "g": "higher", "lo": "75", "hi": "95"}, {"id": "WR-005", "c": "Wearables", "m": "Deep Sleep", "u": "min", "g": "higher", "lo": "45", "hi": "110"}, {"id": "WR-006", "c": "Wearables", "m": "REM Sleep", "u": "min", "g": "higher", "lo": "60", "hi": "135"}, {"id": "WR-007", "c": "Wearables", "m": "Recovery/Readiness Score", "u": "score 0-100", "g": "higher", "lo": "1", "hi": "100"}, {"id": "WR-008", "c": "Wearables", "m": "Respiratory Rate", "u": "breaths/min", "g": "stable", "lo": "12", "hi": "20"}, {"id": "WR-009", "c": "Wearables", "m": "Blood Oxygen (SpO2)", "u": "%", "g": "higher", "lo": "94", "hi": "100"}, {"id": "WR-010", "c": "Wearables", "m": "Skin/Body Temp Deviation", "u": "°F", "g": "stable", "lo": "-1.5", "hi": "1.5"}, {"id": "WR-011", "c": "Wearables", "m": "Daily Steps", "u": "count", "g": "higher", "lo": "3000", "hi": "15000"}, {"id": "WR-012", "c": "Wearables", "m": "Active Energy", "u": "kcal", "g": "context", "lo": "200", "hi": "1200"}, {"id": "WR-013", "c": "Wearables", "m": "VO2max (est.)", "u": "ml/kg/min", "g": "higher", "lo": "30", "hi": "60"}, {"id": "WR-014", "c": "Wearables", "m": "Training Load / Strain", "u": "score", "g": "context", "lo": "0", "hi": "21"}, {"id": "BW-001", "c": "Bloodwork", "m": "Total Testosterone", "u": "ng/dL", "g": "higher", "lo": "300", "hi": "1000"}, {"id": "BW-002", "c": "Bloodwork", "m": "Free Testosterone", "u": "pg/mL", "g": "higher", "lo": "46", "hi": "224"}, {"id": "BW-003", "c": "Bloodwork", "m": "Cortisol (AM)", "u": "µg/dL", "g": "context", "lo": "6", "hi": "23"}, {"id": "BW-004", "c": "Bloodwork", "m": "Vitamin D (25-OH)", "u": "ng/mL", "g": "higher", "lo": "30", "hi": "80"}, {"id": "BW-005", "c": "Bloodwork", "m": "Ferritin", "u": "ng/mL", "g": "context", "lo": "30", "hi": "300"}, {"id": "BW-006", "c": "Bloodwork", "m": "Hemoglobin", "u": "g/dL", "g": "context", "lo": "13.5", "hi": "17.5"}, {"id": "BW-007", "c": "Bloodwork", "m": "Hematocrit", "u": "%", "g": "context", "lo": "38.8", "hi": "50"}, {"id": "BW-008", "c": "Bloodwork", "m": "HbA1c", "u": "%", "g": "lower", "lo": "4", "hi": "5.6"}, {"id": "BW-009", "c": "Bloodwork", "m": "Fasting Glucose", "u": "mg/dL", "g": "lower", "lo": "70", "hi": "99"}, {"id": "BW-010", "c": "Bloodwork", "m": "Fasting Insulin", "u": "µIU/mL", "g": "lower", "lo": "2", "hi": "8"}, {"id": "BW-011", "c": "Bloodwork", "m": "Total Cholesterol", "u": "mg/dL", "g": "context", "lo": "125", "hi": "200"}, {"id": "BW-012", "c": "Bloodwork", "m": "HDL", "u": "mg/dL", "g": "higher", "lo": "40", "hi": "80"}, {"id": "BW-013", "c": "Bloodwork", "m": "LDL", "u": "mg/dL", "g": "lower", "lo": "0", "hi": "100"}, {"id": "BW-014", "c": "Bloodwork", "m": "Triglycerides", "u": "mg/dL", "g": "lower", "lo": "0", "hi": "150"}, {"id": "BW-015", "c": "Bloodwork", "m": "CRP (hs)", "u": "mg/L", "g": "lower", "lo": "0", "hi": "3"}, {"id": "BW-016", "c": "Bloodwork", "m": "Creatine Kinase (CK)", "u": "U/L", "g": "context", "lo": "30", "hi": "200"}, {"id": "BW-017", "c": "Bloodwork", "m": "TSH", "u": "µIU/mL", "g": "context", "lo": "0.4", "hi": "4"}, {"id": "BW-018", "c": "Bloodwork", "m": "ALT", "u": "U/L", "g": "lower", "lo": "7", "hi": "56"}, {"id": "BW-019", "c": "Bloodwork", "m": "AST", "u": "U/L", "g": "lower", "lo": "10", "hi": "40"}, {"id": "BW-020", "c": "Bloodwork", "m": "eGFR", "u": "mL/min/1.73m²", "g": "higher", "lo": "90", "hi": "120"}, {"id": "BC-001", "c": "Body Composition", "m": "Body Weight", "u": "lb", "g": "context", "lo": "100", "hi": "400"}, {"id": "BC-002", "c": "Body Composition", "m": "Body Fat %", "u": "%", "g": "context", "lo": "5", "hi": "35"}, {"id": "BC-003", "c": "Body Composition", "m": "Lean Body Mass", "u": "lb", "g": "higher", "lo": "80", "hi": "220"}, {"id": "BC-004", "c": "Body Composition", "m": "Fat Mass", "u": "lb", "g": "context", "lo": "10", "hi": "120"}, {"id": "BC-005", "c": "Body Composition", "m": "Waist Circumference", "u": "in", "g": "lower", "lo": "26", "hi": "50"}, {"id": "BC-006", "c": "Body Composition", "m": "Hip Circumference", "u": "in", "g": "context", "lo": "30", "hi": "55"}, {"id": "BC-007", "c": "Body Composition", "m": "Chest Circumference", "u": "in", "g": "context", "lo": "30", "hi": "55"}, {"id": "BC-008", "c": "Body Composition", "m": "Arm (flexed)", "u": "in", "g": "context", "lo": "10", "hi": "22"}, {"id": "BC-009", "c": "Body Composition", "m": "Thigh Circumference", "u": "in", "g": "context", "lo": "16", "hi": "34"}, {"id": "BC-010", "c": "Body Composition", "m": "Calf Circumference", "u": "in", "g": "context", "lo": "12", "hi": "20"}, {"id": "BC-011", "c": "Body Composition", "m": "Height", "u": "in", "g": "context", "lo": "48", "hi": "84"}, {"id": "BC-012", "c": "Body Composition", "m": "Visceral Fat Rating", "u": "level", "g": "lower", "lo": "1", "hi": "12"}, {"id": "BC-013", "c": "Body Composition", "m": "Bone Mineral Density", "u": "g/cm² / T-score", "g": "higher", "lo": "-1", "hi": "2"}, {"id": "BC-014", "c": "Body Composition", "m": "Resting Metabolic Rate", "u": "kcal/day", "g": "context", "lo": "1200", "hi": "2600"}, {"id": "SJ-001", "c": "Subjective", "m": "Session RPE", "u": "0-10", "g": "context", "lo": "0", "hi": "10"}, {"id": "SJ-002", "c": "Subjective", "m": "Muscle Soreness (DOMS)", "u": "0-10", "g": "lower", "lo": "0", "hi": "10"}, {"id": "SJ-003", "c": "Subjective", "m": "Perceived Fatigue", "u": "0-10", "g": "lower", "lo": "0", "hi": "10"}, {"id": "SJ-004", "c": "Subjective", "m": "Mood", "u": "1-5", "g": "higher", "lo": "1", "hi": "5"}, {"id": "SJ-005", "c": "Subjective", "m": "Stress", "u": "0-10", "g": "lower", "lo": "0", "hi": "10"}, {"id": "SJ-006", "c": "Subjective", "m": "Motivation", "u": "0-10", "g": "higher", "lo": "0", "hi": "10"}, {"id": "SJ-007", "c": "Subjective", "m": "Sleep Quality (subjective)", "u": "1-5", "g": "higher", "lo": "1", "hi": "5"}, {"id": "SJ-008", "c": "Subjective", "m": "Joint Pain / Niggles", "u": "0-10 + location", "g": "lower", "lo": "0", "hi": "10"}, {"id": "SJ-009", "c": "Subjective", "m": "Menstrual Cycle Phase", "u": "phase/day", "g": "context", "lo": "1", "hi": "35"}, {"id": "SJ-010", "c": "Subjective", "m": "Appetite", "u": "1-5", "g": "context", "lo": "1", "hi": "5"}, {"id": "SJ-011", "c": "Subjective", "m": "Energy Level", "u": "0-10", "g": "higher", "lo": "0", "hi": "10"}, {"id": "SJ-012", "c": "Subjective", "m": "Hydration (subjective)", "u": "1-5", "g": "higher", "lo": "1", "hi": "5"}, {"id": "PF-001", "c": "Performance", "m": "Bar Speed (mean velocity)", "u": "m/s", "g": "context", "lo": "0.1", "hi": "1.5"}, {"id": "PF-002", "c": "Performance", "m": "Grip Strength", "u": "kg", "g": "higher", "lo": "30", "hi": "70"}, {"id": "PF-003", "c": "Performance", "m": "Countermovement Jump", "u": "cm/in", "g": "higher", "lo": "20", "hi": "45"}, {"id": "PF-004", "c": "Performance", "m": "Reactive Strength Index", "u": "index", "g": "higher", "lo": "0.5", "hi": "3"}, {"id": "PF-005", "c": "Performance", "m": "Sprint Times (10/20/40m)", "u": "sec", "g": "lower", "lo": "1", "hi": "7"}, {"id": "PF-006", "c": "Performance", "m": "Resting Blood Pressure", "u": "mmHg", "g": "context", "lo": "90", "hi": "120"}, {"id": "MX-001", "c": "Strength Maxes", "m": "Back Squat 1RM", "u": "lb", "g": "higher", "lo": "45", "hi": "700"}, {"id": "MX-002", "c": "Strength Maxes", "m": "Front Squat 1RM", "u": "lb", "g": "higher", "lo": "45", "hi": "500"}, {"id": "MX-003", "c": "Strength Maxes", "m": "Deadlift 1RM", "u": "lb", "g": "higher", "lo": "45", "hi": "800"}, {"id": "MX-004", "c": "Strength Maxes", "m": "Stiff Leg Deadlift 1RM", "u": "lb", "g": "higher", "lo": "45", "hi": "600"}, {"id": "MX-005", "c": "Strength Maxes", "m": "Bench Press 1RM", "u": "lb", "g": "higher", "lo": "45", "hi": "600"}, {"id": "MX-006", "c": "Strength Maxes", "m": "Overhead / Shoulder Press 1RM", "u": "lb", "g": "higher", "lo": "45", "hi": "400"}, {"id": "MX-007", "c": "Strength Maxes", "m": "Power Clean 1RM", "u": "lb", "g": "higher", "lo": "45", "hi": "400"}, {"id": "MX-008", "c": "Strength Maxes", "m": "Clean High Pull 1RM", "u": "lb", "g": "higher", "lo": "45", "hi": "400"}, {"id": "MX-009", "c": "Strength Maxes", "m": "Snatch 1RM", "u": "lb", "g": "higher", "lo": "45", "hi": "350"}, {"id": "MX-010", "c": "Strength Maxes", "m": "Pull-Up (added load) 1RM", "u": "lb", "g": "higher", "lo": "0", "hi": "300"}, {"id": "MX-011", "c": "Strength Maxes", "m": "Bent Row 1RM", "u": "lb", "g": "higher", "lo": "45", "hi": "500"}, {"id": "MX-012", "c": "Strength Maxes", "m": "Estimated 1RM (rep-max calc)", "u": "lb", "g": "higher", "lo": "1", "hi": "1000"}, {"id": "MX-013", "c": "Strength Maxes", "m": "1RM Test Date", "u": "date", "g": "context", "lo": "", "hi": ""}, {"id": "MX-014", "c": "Strength Maxes", "m": "Rep-Max Entry (weight × reps)", "u": "lb × reps", "g": "higher", "lo": "1", "hi": "1000"}, {"id": "MA-001", "c": "Movement Assessment", "m": "Overhead Squat Screen", "u": "0-3 score", "g": "higher", "lo": "0", "hi": "3"}, {"id": "MA-002", "c": "Movement Assessment", "m": "Deep Squat Depth", "u": "0-3 / degrees", "g": "higher", "lo": "0", "hi": "3"}, {"id": "MA-003", "c": "Movement Assessment", "m": "Hurdle Step", "u": "0-3 (L/R)", "g": "higher", "lo": "0", "hi": "3"}, {"id": "MA-004", "c": "Movement Assessment", "m": "Inline Lunge", "u": "0-3 (L/R)", "g": "higher", "lo": "0", "hi": "3"}, {"id": "MA-005", "c": "Movement Assessment", "m": "Shoulder Mobility Reach", "u": "0-3 (L/R)", "g": "higher", "lo": "0", "hi": "3"}, {"id": "MA-006", "c": "Movement Assessment", "m": "Active Straight-Leg Raise", "u": "0-3 (L/R)", "g": "higher", "lo": "0", "hi": "3"}, {"id": "MA-007", "c": "Movement Assessment", "m": "Trunk Stability Push-Up", "u": "0-3", "g": "higher", "lo": "0", "hi": "3"}, {"id": "MA-008", "c": "Movement Assessment", "m": "Rotary Stability", "u": "0-3 (L/R)", "g": "higher", "lo": "0", "hi": "3"}, {"id": "MA-009", "c": "Movement Assessment", "m": "Ankle Dorsiflexion (knee-to-wall)", "u": "cm / in", "g": "higher", "lo": "0", "hi": "6"}, {"id": "MA-010", "c": "Movement Assessment", "m": "Hip Internal Rotation", "u": "degrees", "g": "higher", "lo": "20", "hi": "45"}, {"id": "MA-011", "c": "Movement Assessment", "m": "Thoracic Rotation", "u": "degrees", "g": "higher", "lo": "30", "hi": "60"}, {"id": "MA-012", "c": "Movement Assessment", "m": "Single-Leg Balance (eyes closed)", "u": "sec", "g": "higher", "lo": "5", "hi": "45"}, {"id": "MA-013", "c": "Movement Assessment", "m": "Overhead Squat Asymmetry Flag", "u": "L/R note", "g": "stable", "lo": "", "hi": ""}, {"id": "MA-014", "c": "Movement Assessment", "m": "Pain Provocation During Screen", "u": "yes/no + site", "g": "lower", "lo": "0", "hi": "1"}, {"id": "HC-001", "c": "Healthcare", "m": "Blood Pressure (Systolic)", "u": "mmHg", "g": "context", "lo": "90", "hi": "120"}, {"id": "HC-002", "c": "Healthcare", "m": "Blood Pressure (Diastolic)", "u": "mmHg", "g": "context", "lo": "60", "hi": "80"}, {"id": "HC-003", "c": "Healthcare", "m": "Blood Sugar (Fasting, home)", "u": "mg/dL", "g": "context", "lo": "70", "hi": "99"}, {"id": "HC-004", "c": "Healthcare", "m": "Blood Sugar (Post-meal)", "u": "mg/dL", "g": "context", "lo": "70", "hi": "140"}, {"id": "HC-005", "c": "Healthcare", "m": "Blood Sugar (Pre/Post workout)", "u": "mg/dL", "g": "context", "lo": "70", "hi": "180"}, {"id": "HC-006", "c": "Healthcare", "m": "CGM Average Glucose", "u": "mg/dL", "g": "context", "lo": "70", "hi": "140"}, {"id": "HC-007", "c": "Healthcare", "m": "CGM Time-in-Range", "u": "%", "g": "higher", "lo": "70", "hi": "100"}, {"id": "HC-008", "c": "Healthcare", "m": "Resting Heart Rate (manual)", "u": "bpm", "g": "lower", "lo": "38", "hi": "80"}, {"id": "HC-009", "c": "Healthcare", "m": "Body Temperature", "u": "°F", "g": "stable", "lo": "97", "hi": "99.5"}, {"id": "HC-010", "c": "Healthcare", "m": "Medication / Supplement Log", "u": "name+dose", "g": "context", "lo": "", "hi": ""}, {"id": "HC-011", "c": "Healthcare", "m": "Injury / Condition Flag", "u": "name+status", "g": "context", "lo": "", "hi": ""}, {"id": "HC-012", "c": "Healthcare", "m": "Hydration (intake)", "u": "oz / L", "g": "higher", "lo": "32", "hi": "150"}, {"id": "MXC-01", "c": "Strength Maxes", "m": "Back Squat 1RM (coach sheet)", "u": "lb", "g": "higher", "lo": "300", "hi": "300"}, {"id": "MXC-02", "c": "Strength Maxes", "m": "Stiff Leg Deadlift 1RM (coach sheet)", "u": "lb", "g": "higher", "lo": "362", "hi": "362"}, {"id": "MXC-03", "c": "Strength Maxes", "m": "Front Squat 1RM (coach sheet)", "u": "lb", "g": "higher", "lo": "213", "hi": "213"}, {"id": "MXC-04", "c": "Strength Maxes", "m": "Good Morning 1RM (coach sheet)", "u": "lb", "g": "higher", "lo": "170", "hi": "170"}, {"id": "MXC-05", "c": "Strength Maxes", "m": "Shoulder Press 1RM (coach sheet)", "u": "lb", "g": "higher", "lo": "145", "hi": "145"}, {"id": "MXC-06", "c": "Strength Maxes", "m": "SA Press 1RM (coach sheet)", "u": "lb", "g": "higher", "lo": "60", "hi": "60"}, {"id": "MXC-07", "c": "Strength Maxes", "m": "Chest Press 1RM (coach sheet)", "u": "lb", "g": "higher", "lo": "69", "hi": "69"}, {"id": "MXC-08", "c": "Strength Maxes", "m": "SA Bench Press 1RM (coach sheet)", "u": "lb", "g": "higher", "lo": "62", "hi": "62"}, {"id": "MXC-09", "c": "Strength Maxes", "m": "Bicep Curl 1RM (coach sheet)", "u": "lb", "g": "higher", "lo": "80", "hi": "80"}, {"id": "MXC-10", "c": "Strength Maxes", "m": "Zottman Curl 1RM (coach sheet)", "u": "lb", "g": "higher", "lo": "53", "hi": "53"}, {"id": "MXC-11", "c": "Strength Maxes", "m": "DB Snatch 1RM (coach sheet)", "u": "lb", "g": "higher", "lo": "67", "hi": "67"}, {"id": "MXC-12", "c": "Strength Maxes", "m": "Hammer Curl 1RM (coach sheet)", "u": "lb", "g": "higher", "lo": "67", "hi": "67"}, {"id": "MXC-13", "c": "Strength Maxes", "m": "Hamstring Curl 1RM (coach sheet)", "u": "lb", "g": "higher", "lo": "160", "hi": "160"}, {"id": "MXC-14", "c": "Strength Maxes", "m": "Clean High Pull 1RM (coach sheet)", "u": "lb", "g": "higher", "lo": "180", "hi": "180"}, {"id": "MXC-15", "c": "Strength Maxes", "m": "Side Bend 1RM (coach sheet)", "u": "lb", "g": "higher", "lo": "86", "hi": "86"}];
+(function(){
+  var LOG_KEY = 'ffp_healthdata_log';
+  function loadLog(){ try{ return JSON.parse(localStorage.getItem(LOG_KEY)||'[]'); }catch(e){ return []; } }
+  function saveLog(l){ try{ localStorage.setItem(LOG_KEY, JSON.stringify(l)); }catch(e){} }
+  function cats(){ var s=[]; HD_CATALOG.forEach(function(m){ if(s.indexOf(m.c)<0) s.push(m.c); }); return s; }
+  function metricsIn(c){ return HD_CATALOG.filter(function(m){ return m.c===c; }); }
+  function byId(id){ for(var i=0;i<HD_CATALOG.length;i++) if(HD_CATALOG[i].id===id) return HD_CATALOG[i]; return null; }
+  function esc(s){ return (''+s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+
+  window._hdState = { cat: 'Strength Maxes' };
+
+  window.renderHealthData = function(){
+    var ctrl = document.getElementById('hd-controls');
+    var body = document.getElementById('hd-body');
+    if(!ctrl||!body) return;
+    // category selector
+    var opts = cats().map(function(c){ return '<option value="'+esc(c)+'"'+(c===_hdState.cat?' selected':'')+'>'+esc(c)+'</option>'; }).join('');
+    ctrl.innerHTML =
+      '<label style="font-size:0.8rem;color:var(--muted)">Category</label>'+
+      '<select id="hd-cat" onchange="_hdSetCat(this.value)" style="width:100%;padding:0.6rem;margin-top:0.25rem;border-radius:10px;background:var(--card);color:var(--text);border:1px solid var(--border)">'+opts+'</select>';
+    renderCatBody();
+  };
+
+  window._hdSetCat = function(c){ _hdState.cat = c; renderCatBody(); };
+
+  function latestFor(id){
+    var log = loadLog().filter(function(e){ return e.metric_id===id; });
+    if(!log.length) return null;
+    log.sort(function(a,b){ return (b.ts||'').localeCompare(a.ts||''); });
+    return log[0];
+  }
+
+  function renderCatBody(){
+    var body = document.getElementById('hd-body');
+    var list = metricsIn(_hdState.cat);
+    var rows = list.map(function(m){
+      var last = latestFor(m.id);
+      var val = last ? esc(last.value)+' '+esc(m.u) : '<span style="color:var(--muted)">—</span>';
+      var when = last ? '<div style="font-size:0.72rem;color:var(--muted)">'+esc((last.ts||'').slice(0,10))+(last.note?(' · '+esc(last.note)):'')+'</div>' : '';
+      var range = (m.lo!==''&&m.hi!==''&&m.lo!==m.hi) ? '<div style="font-size:0.72rem;color:var(--muted)">ref '+esc(m.lo)+'–'+esc(m.hi)+' '+esc(m.u)+'</div>' : '';
+      return '<div class="card" style="margin-bottom:0.5rem;padding:0.75rem">'+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem">'+
+          '<div style="flex:1"><div style="font-weight:600">'+esc(m.m)+'</div>'+range+when+'</div>'+
+          '<div style="text-align:right"><div style="color:var(--accent);font-weight:700">'+val+'</div>'+
+          '<button class="btn btn-sm" style="margin-top:0.35rem;padding:0.3rem 0.6rem" onclick="_hdAdd(\''+m.id+'\')">+ Log</button></div>'+
+        '</div>'+
+        '<div id="hd-form-'+m.id+'" style="display:none;margin-top:0.6rem;border-top:1px solid var(--border);padding-top:0.6rem">'+
+          '<div style="display:flex;gap:0.5rem;flex-wrap:wrap">'+
+            '<input id="hd-val-'+m.id+'" placeholder="Value ('+esc(m.u)+')" style="flex:1;min-width:90px;padding:0.5rem;border-radius:8px;background:var(--bg);color:var(--text);border:1px solid var(--border)">'+
+            '<input id="hd-date-'+m.id+'" type="date" style="padding:0.5rem;border-radius:8px;background:var(--bg);color:var(--text);border:1px solid var(--border)">'+
+          '</div>'+
+          '<input id="hd-note-'+m.id+'" placeholder="Note (optional)" style="width:100%;margin-top:0.4rem;padding:0.5rem;border-radius:8px;background:var(--bg);color:var(--text);border:1px solid var(--border)">'+
+          '<div style="margin-top:0.5rem;display:flex;gap:0.5rem">'+
+            '<button class="btn btn-sm" onclick="_hdSave(\''+m.id+'\')">Save</button>'+
+            '<button class="btn btn-sm btn-secondary" onclick="_hdAdd(\''+m.id+'\')">Cancel</button>'+
+            '<button class="btn btn-sm" style="margin-left:auto" onclick="_hdHistory(\''+m.id+'\')">History</button>'+
+          '</div>'+
+          '<div id="hd-hist-'+m.id+'"></div>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+    body.innerHTML = rows || '<p style="color:var(--muted)">No metrics in this category.</p>';
+  }
+
+  window._hdAdd = function(id){
+    var f = document.getElementById('hd-form-'+id);
+    if(!f) return;
+    var showing = f.style.display!=='none';
+    f.style.display = showing ? 'none' : 'block';
+    if(!showing){
+      var d = document.getElementById('hd-date-'+id);
+      if(d && !d.value) d.value = new Date().toISOString().slice(0,10);
+    }
+  };
+
+  window._hdSave = function(id){
+    var v = document.getElementById('hd-val-'+id);
+    var d = document.getElementById('hd-date-'+id);
+    var n = document.getElementById('hd-note-'+id);
+    if(!v || v.value.trim()===''){ if(v) v.focus(); return; }
+    var log = loadLog();
+    log.push({ entry_id: 'e'+Date.now()+Math.floor(Math.random()*999),
+               metric_id: id, value: v.value.trim(),
+               ts: (d&&d.value?d.value:new Date().toISOString().slice(0,10))+'T00:00:00',
+               note: n?n.value.trim():'' });
+    saveLog(log);
+    // If this is a Strength Max, also mirror into ffp_maxes so it drives % loads.
+    var m = byId(id);
+    if(m && m.c==='Strength Maxes'){
+      try{
+        var liftName = m.m.replace(/\s*1RM.*$/,'').trim();
+        var mx = {}; try{ mx = JSON.parse(localStorage.getItem('ffp_maxes')||'{}'); }catch(e){ mx={}; }
+        var num = parseFloat(v.value);
+        if(!isNaN(num)){
+          mx[liftName] = { weight: num, reps: 1, oneRM: num, date: (d&&d.value)?d.value:new Date().toISOString().slice(0,10) };
+          localStorage.setItem('ffp_maxes', JSON.stringify(mx));
+          if(typeof maxes!=='undefined') maxes = mx;
+        }
+      }catch(e){}
+    }
+    renderCatBody();
+  };
+
+  window._hdHistory = function(id){
+    var box = document.getElementById('hd-hist-'+id);
+    if(!box) return;
+    if(box.innerHTML){ box.innerHTML=''; return; }
+    var m = byId(id);
+    var log = loadLog().filter(function(e){ return e.metric_id===id; })
+                       .sort(function(a,b){ return (b.ts||'').localeCompare(a.ts||''); });
+    if(!log.length){ box.innerHTML='<div style="font-size:0.78rem;color:var(--muted);margin-top:0.5rem">No entries yet.</div>'; return; }
+    box.innerHTML = '<div style="margin-top:0.5rem;font-size:0.8rem">'+
+      log.slice(0,12).map(function(e){
+        return '<div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:0.25rem 0">'+
+          '<span>'+esc((e.ts||'').slice(0,10))+'</span>'+
+          '<span style="color:var(--accent)">'+esc(e.value)+' '+esc(m?m.u:'')+'</span>'+
+          '<span style="color:var(--muted);flex:1;text-align:right;padding-left:0.5rem">'+esc(e.note||'')+'</span>'+
+          '<button class="btn btn-sm" style="padding:0.1rem 0.4rem;margin-left:0.4rem" onclick="_hdDel(\''+e.entry_id+'\',\''+id+'\')">✕</button>'+
+        '</div>';
+      }).join('')+'</div>';
+  };
+
+  window._hdDel = function(entryId, metricId){
+    var log = loadLog().filter(function(e){ return e.entry_id!==entryId; });
+    saveLog(log);
+    _hdHistory(metricId); _hdHistory(metricId); // toggle refresh
+    renderCatBody();
+  };
 })();
 </script>
 </body>

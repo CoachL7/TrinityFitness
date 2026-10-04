@@ -9194,7 +9194,7 @@ function generateCoachReply(q) {
   if (/(today (is|isn.?t|is not)).*(game|competition|comp|meet|race|match) ?day|(remove|delete|clear|cancel|take off).*(game|competition|comp|meet|race|match).*(today)|no (game|competition|comp|meet) today/.test(t)
       && !/add|schedule|set|create/.test(t)){
     try{
-      const now=new Date(); const todayISO=new Date(now.getFullYear(),now.getMonth(),now.getDate()).toISOString().slice(0,10);
+      const now=new Date(); const todayISO=(typeof ymd==='function')?ymd(now):new Date(now.getFullYear(),now.getMonth(),now.getDate()).toISOString().slice(0,10);
       let removed=false;
       if(typeof getCompetitionDates==='function' && getCompetitionDates().some(c=>c.date===todayISO) && typeof removeCompetitionDate==='function'){
         removeCompetitionDate(todayISO); removed=true;
@@ -9208,15 +9208,23 @@ function generateCoachReply(q) {
   // Move / reschedule a workout to today (missed it on its scheduled day) and shift the sequence.
   // e.g. "move Tuesday's workout 3 to today", "I missed my workout, do it today and shift my calendar",
   //      "reschedule today", "shift everything since I couldn't train".
-  if (/(move|reschedul|shift|missed|couldn.?t|didn.?t|skip).*(workout|session|calendar|training|today)|do (workout|it) today|pick up (where|today)/.test(t)
-      && !/competition|compete|game|meet|race|tournament/.test(t)){
+  if ((
+        /(move|reschedul|shift|adjust|change|update|fix|set).*(workout|session|calendar|schedule|training)/.test(t) ||
+        /(workout|session)\s*(number\s*)?(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve).*(today|now)/.test(t) ||
+        /(today|now).*(workout|session)\s*(number\s*)?(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)/.test(t) ||
+        /(missed|couldn.?t|didn.?t|skip|couldnt|didnt).*(workout|session|train|yesterday|it)/.test(t) ||
+        /(do|complete|make).*(workout|session|it)\s*(number\s*)?(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)?.*(today|now)/.test(t) ||
+        /(shift|move|push).*(everything|calendar|schedule|forward|rest)/.test(t) ||
+        /pick up (where|today|from)/.test(t)
+      )
+      && !/competition|compete|game|meet|race|tournament|add .*(comp|game|meet|race)/.test(t)){
     try{
       const sched=getUserSchedule(); const now=new Date();
       const t0=new Date(now.getFullYear(),now.getMonth(),now.getDate());
       // If a competition was wrongly placed on TODAY, remove it (the user wants to train, not compete).
       let removedComp=false;
       try{
-        const todayISO=t0.toISOString().slice(0,10);
+        const todayISO=(typeof ymd==='function')?ymd(t0):t0.toISOString().slice(0,10);
         if(typeof getCompetitionDates==='function'){
           const hadToday=getCompetitionDates().some(c=>c.date===todayISO);
           if(hadToday && typeof removeCompetitionDate==='function'){ removeCompetitionDate(todayISO); removedComp=true; }
@@ -9227,7 +9235,9 @@ function generateCoachReply(q) {
       if((sched[t0.getDay()]||'rest')!=='workout'){ sched[t0.getDay()]='workout'; setUserSchedule(sched); madeToday=true; }
       // Figure out which workout number they want today: an explicit number, else the next in sequence.
       let targetIdx=null;
-      const numMatch=t.match(/(?:workout|session|#)\s*(\d{1,2})/);
+      const _numWords={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12};
+      let numMatch=t.match(/(?:workout|session|#)\s*(?:number\s*)?(\d{1,2})/);
+      if(!numMatch){ const wm=t.match(/(?:workout|session)\s*(?:number\s*)?(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)/); if(wm){ numMatch=[wm[0], String(_numWords[wm[1]])]; } }
       const prog=(typeof getActiveProgram==='function')?getActiveProgram():null;
       const progLen=(prog&&prog.length)?prog.length:12;
       if(numMatch){ targetIdx=(parseInt(numMatch[1])-1); }
@@ -9239,7 +9249,7 @@ function generateCoachReply(q) {
       if(targetIdx===null) targetIdx=0;
       // Pin that workout to today, so the sequence continues from here on the user's training days.
       if(typeof setSequencePin==='function'){
-        setSequencePin(new Date(t0.getFullYear(),t0.getMonth(),t0.getDate()).toISOString().slice(0,10), targetIdx);
+        setSequencePin((typeof ymd==='function')?ymd(t0):new Date(t0.getFullYear(),t0.getMonth(),t0.getDate()).toISOString().slice(0,10), targetIdx);
       }
       if(typeof updateWorkoutsPage==='function') updateWorkoutsPage();
       if(typeof renderHomePage==='function') renderHomePage();
@@ -15604,7 +15614,18 @@ function renderQuickStart(){
       <div style="font-size:0.8rem;opacity:0.95;margin-top:0.15rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${cfg.sub}</div>
     </div>
     <div style="font-size:1.4rem;opacity:0.9;flex-shrink:0">›</div>
-  </button>`;
+  </button>
+    ${isComp?`<div style="text-align:center;margin:-0.25rem 0 0.85rem"><button onclick="if(typeof removeCompetitionDate==='function'){removeCompetitionDate((typeof ymd==='function')?ymd(new Date()):new Date().toISOString().slice(0,10));} if(typeof updateWorkoutsPage==='function')updateWorkoutsPage(); if(typeof renderHomePage==='function')renderHomePage();" style="background:none;border:none;color:var(--muted);font-size:0.72rem;text-decoration:underline;cursor:pointer">✕ Not a game day? Remove competition from today</button></div>`:''}
+    ${(!isComp && dayType==='workout' && !doneToday)?`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:0.75rem 0.9rem;margin:-0.1rem 0 1rem;display:flex;align-items:center;justify-content:space-between;gap:0.75rem">
+      <div style="min-width:0">
+        <div style="font-size:0.78rem;font-weight:700;color:var(--text)">Wrong workout for today?</div>
+        <div style="font-size:0.7rem;color:var(--muted);margin-top:0.1rem">Tap − or + to set today's workout. The rest of your plan shifts to follow.</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.4rem;flex-shrink:0">
+        <button onclick="_homeNudgeWorkout(-1)" aria-label="Previous workout" style="background:var(--accent);border:none;color:#fff;border-radius:8px;width:38px;height:38px;font-size:1.3rem;font-weight:800;cursor:pointer;line-height:1">−</button>
+        <button onclick="_homeNudgeWorkout(1)" aria-label="Next workout" style="background:var(--accent);border:none;color:#fff;border-radius:8px;width:38px;height:38px;font-size:1.3rem;font-weight:800;cursor:pointer;line-height:1">+</button>
+      </div>
+    </div>`:''}`;
 }
 
 // Prominent streak hero at the very top of Home — the #1 retention mechanic.
@@ -15899,6 +15920,21 @@ function buildDailyMealEvents(m, mealsPerDay, dayType, woStart, woEnd, wakeMins,
   return meals;
 }
 
+function _homeNudgeWorkout(delta){
+  try{
+    var now=new Date(); var t0=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+    var cur=(typeof getSessionIndexForDate==='function')?getSessionIndexForDate(t0):null;
+    if(cur===null){ cur=(typeof getSequencePin==='function')?getSequencePin().index:0; }
+    var prog=(typeof getActiveProgram==='function')?getActiveProgram():null;
+    var progLen=(prog&&prog.length)?prog.length:12;
+    var next=((cur+delta)%progLen+progLen)%progLen;
+    if(typeof setSequencePin==='function'){
+      setSequencePin((typeof ymd==='function')?ymd(t0):new Date(t0.getFullYear(),t0.getMonth(),t0.getDate()).toISOString().slice(0,10), next);
+    }
+    if(typeof updateWorkoutsPage==='function') updateWorkoutsPage();
+    if(typeof renderHomePage==='function') renderHomePage();
+  }catch(e){}
+}
 function renderSeasonCard(){
   var el=document.getElementById('home-season-card'); if(!el) return;
   var seasons=(typeof getSeasons==='function')?getSeasons():[];

@@ -157,7 +157,7 @@
     .page.active { padding-left: 0; padding-right: 0; }
     #onboarding { max-width: 560px; margin: 0 auto; }
     /* Cards laid out with more horizontal room read like a web dashboard */
-    #coach-fab { right: calc(50% - 450px + 24px) !important; }
+    #ai-launcher { right: calc(50% - 450px + 24px) !important; }
     /* Two-column grids where it helps the page feel like a website */
     .grid-2 { grid-template-columns: 1fr 1fr; gap: 1rem; }
     .grid-3 { grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
@@ -1501,13 +1501,17 @@
     </button>
   </nav>
 
-  <!-- FLOATING AI COACH (available on every page) -->
-  <button id="coach-fab" onclick="openCoachOverlay()" aria-label="Open AI Coach"
-    style="position:fixed;right:16px;bottom:calc(78px + env(safe-area-inset-bottom));z-index:900;height:48px;padding:0 1.1rem;border-radius:24px;border:none;background:var(--accent);color:#fff;font-size:0.95rem;font-weight:800;letter-spacing:0.5px;box-shadow:0 6px 20px rgba(0,0,0,0.35);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:0.4rem">💬 Coach</button>
-
-  <!-- FLOATING VIDEO ANALYZER (available on every page) -->
-  <button id="analyze-fab" onclick="vaStart()" aria-label="Analyze my form"
-    style="position:fixed;right:16px;bottom:calc(134px + env(safe-area-inset-bottom));z-index:900;height:48px;padding:0 1.1rem;border-radius:24px;border:none;background:linear-gradient(135deg,#2E8C74,#3FB08F);color:#fff;font-size:0.95rem;font-weight:800;letter-spacing:0.5px;box-shadow:0 6px 20px rgba(0,0,0,0.35);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:0.4rem">🎥 Analyze</button>
+  <!-- COLLAPSIBLE AI LAUNCHER (one small button; expands to Coach + Analyze) -->
+  <div id="ai-launcher" style="position:fixed;right:16px;bottom:calc(78px + env(safe-area-inset-bottom));z-index:900;display:flex;flex-direction:column;align-items:flex-end;gap:0.5rem">
+    <!-- expanded actions (hidden until toggled) -->
+    <button id="ai-analyze-item" onclick="vaStart();toggleAiLauncher(false)" aria-label="Analyze my form"
+      style="display:none;height:44px;padding:0 1rem;border-radius:22px;border:none;background:linear-gradient(135deg,#2E8C74,#3FB08F);color:#fff;font-size:0.9rem;font-weight:800;box-shadow:0 6px 20px rgba(0,0,0,0.35);cursor:pointer;align-items:center;gap:0.4rem;opacity:0;transform:translateY(8px);transition:opacity .18s,transform .18s">🎥 Analyze</button>
+    <button id="ai-coach-item" onclick="openCoachOverlay();toggleAiLauncher(false)" aria-label="Open AI Coach"
+      style="display:none;height:44px;padding:0 1rem;border-radius:22px;border:none;background:var(--accent);color:#fff;font-size:0.9rem;font-weight:800;box-shadow:0 6px 20px rgba(0,0,0,0.35);cursor:pointer;align-items:center;gap:0.4rem;opacity:0;transform:translateY(8px);transition:opacity .18s,transform .18s">💬 Coach</button>
+    <!-- the single collapsed toggle -->
+    <button id="ai-fab-toggle" onclick="toggleAiLauncher()" aria-label="Milton AI"
+      style="height:52px;width:52px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:1.5rem;box-shadow:0 6px 20px rgba(0,0,0,0.4);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .2s">✨</button>
+  </div>
 
   <div id="coach-overlay" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.5)" onclick="if(event.target===this)closeCoachOverlay()">
     <div style="position:absolute;left:0;right:0;bottom:0;max-height:85vh;display:flex;flex-direction:column;background:var(--bg);border-radius:18px 18px 0 0;box-shadow:0 -8px 40px rgba(0,0,0,0.4)">
@@ -1770,6 +1774,15 @@
               <button class="btn btn-sm btn-outline" style="border-color:var(--muted);color:var(--muted)" onclick="dismissAllergyPrompt()">Dismiss</button>
             </div>
           </div>
+        </div>
+
+        <!-- HEALTH CONDITIONS -->
+        <div class="card" id="health-conditions-card" style="margin-top:1rem">
+          <div class="card-title">🩺 Health Conditions (nutrition)</div>
+          <p style="font-size:0.83rem;color:var(--muted);margin-bottom:0.75rem">Conditions beyond allergies that affect your nutrition — e.g. IBS, GERD/reflux, Crohn's, lactose intolerance. Milton tailors your meals to help manage symptoms like gas, bloating, and cramps.</p>
+          <div id="health-conditions-grid" class="ob-multi-grid" style="margin-bottom:0.75rem"></div>
+          <label style="font-size:0.76rem;color:var(--muted);display:block;margin-bottom:0.3rem">Other notes (optional):</label>
+          <input type="text" id="inp-health-notes" placeholder="e.g. low-FODMAP needed, acid reflux triggers…" oninput="saveHealthNotes(this.value)" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:0.85rem">
         </div>
       </div>
 
@@ -2501,6 +2514,8 @@ if (!trialStart) { trialStart = Date.now().toString(); localStorage.setItem('ffp
 
 let heightInCm = false;
 let currentPhase = 'maxes';
+let currentPhaseWeek = undefined;   // which week of the current block (for weekly load progression)
+let currentPhaseTotal = undefined;  // total weeks in the current block
 let selectedGoal = profile.goal || 'maintain';
 let selectedBodyType = profile.bodyType || 'ecto';
 let selectedTrainingMode = profile.trainingMode || 'strength';
@@ -6276,10 +6291,10 @@ function showPage(page){
   if(page==='nutrition'){updateNutritionPage();if(typeof syncAllergyUI==='function')syncAllergyUI();}
   if(page==='recovery'){try{initRecoveryPage();}catch(e){console.warn('recovery init',e);}}
   if(page==='account'){updateTrialBadge();if(typeof renderDataSummary==='function')renderDataSummary('data-summary-content',false);if(typeof renderActiveUser==='function')renderActiveUser();if(typeof renderUsersList==='function')renderUsersList();if(typeof renderOwnerModeCard==='function')renderOwnerModeCard();}
-  if(page==='profile'){if(profilePage){profilePage.style.cssText='display:block;position:fixed;inset:0;z-index:200;overflow-y:auto;background:var(--bg)';profilePage.classList.add('active');if(!document.getElementById('profile-back-btn')){const btn=document.createElement('button');btn.id='profile-back-btn';btn.innerHTML='← Back';btn.style.cssText='position:sticky;top:60px;z-index:201;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.5rem 1rem;font-size:0.82rem;font-weight:700;cursor:pointer;display:block;margin:0.75rem 1rem 0;width:calc(100% - 2rem)';btn.onclick=()=>{profilePage.style.cssText='';profilePage.classList.remove('active');showPage('account');};profilePage.insertBefore(btn,profilePage.firstChild);}}if(typeof initProfileWizard==='function')initProfileWizard();}
+  if(page==='profile'){if(profilePage){profilePage.style.cssText='display:block;position:fixed;inset:0;z-index:200;overflow-y:auto;background:var(--bg)';profilePage.classList.add('active');if(!document.getElementById('profile-back-btn')){const btn=document.createElement('button');btn.id='profile-back-btn';btn.innerHTML='← Back';btn.style.cssText='position:relative;z-index:201;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.5rem 1rem;font-size:0.82rem;font-weight:700;cursor:pointer;display:block;margin:0.75rem 1rem 0.5rem;width:calc(100% - 2rem)';btn.onclick=()=>{profilePage.style.cssText='';profilePage.classList.remove('active');showPage('account');};profilePage.insertBefore(btn,profilePage.firstChild);}}if(typeof initProfileWizard==='function')initProfileWizard();}
   if(page==='recovery')if(typeof initRecoveryPage==='function')initRecoveryPage();
   // Floating coach: hide on the full-screen profile wizard, show elsewhere
-  const fab=document.getElementById('coach-fab');
+  const fab=document.getElementById('ai-fab-toggle');
   if(fab) fab.style.display = (page==='profile') ? 'none' : 'flex';
 }
 
@@ -6937,6 +6952,26 @@ function renderPeriodizationCalendar(plan) {
 function getSeasons(){
   try{ const s=JSON.parse(localStorage.getItem('ffp_seasons')||'[]'); return Array.isArray(s)?s:[]; }catch(e){ return []; }
 }
+
+// How many weeks until the next competition/season start (null if none upcoming).
+// Lets the load taper key off the REAL competition date, not just block position,
+// so an athlete peaks precisely on meet day.
+function weeksUntilCompetition(today){
+  try{
+    const seasons=getSeasons(); if(!seasons.length) return null;
+    today=today||new Date(); today=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+    function parse(d){ const x=new Date(d+'T00:00:00'); return isNaN(x)?null:new Date(x.getFullYear(),x.getMonth(),x.getDate()); }
+    let next=null;
+    for(const s of seasons){
+      const st=parse(s.start), en=parse(s.end); if(!st||!en) continue;
+      if(today>=st && today<=en) return 0;                 // in competition now
+      if(today<st && (!next || st<parse(next.start))) next=s;
+    }
+    if(!next) return null;
+    const st=parse(next.start); const msWeek=7*24*3600*1000;
+    return Math.max(0, Math.ceil((st-today)/msWeek));
+  }catch(e){ return null; }
+}
 function renderSeasonsControl(){
   var el=document.getElementById('seasons-control'); if(!el) return;
   var seasons=getSeasons();
@@ -6956,9 +6991,10 @@ function renderSeasonsControl(){
     +'</div>';
   var curPhase=getSeasonPhase(new Date());
   var status = seasons.length ? ('<div style="font-size:0.72rem;color:var(--accent);font-weight:600;margin-top:0.5rem">Current auto-phase from your season: '+(curPhase?curPhase.charAt(0).toUpperCase()+curPhase.slice(1):'—')+'</div>') : '';
-  el.innerHTML = rows
+  var _html = rows
     + '<button onclick="_seasonAdd()" class="btn btn-sm btn-outline" style="margin-top:0.2rem">+ Add season</button>'
     + typeBtns + status;
+  targets.forEach(function(t){ t.innerHTML = _html; });
 }
 function _seasonAdd(){ var s=getSeasons(); s.push({sport:'',start:'',end:''}); setSeasons(s); renderSeasonsControl(); }
 function _seasonRemove(i){ var s=getSeasons(); s.splice(i,1); setSeasons(s); renderSeasonsControl(); refreshSeasonUI(); }
@@ -7172,6 +7208,15 @@ function updateWorkoutsPage() {
   selectedTrainingMode = autoMode;
   currentPhase = autoMode;
 
+  // Capture where we are WITHIN the current block, so working-set loads can
+  // progress week-to-week (and taper into a competition). Pulled from the same
+  // annual-plan entry the calendars use; falls back to neutral if unavailable.
+  try{
+    const _we = (typeof getCurrentWeekEntry==='function') ? getCurrentWeekEntry() : null;
+    currentPhaseWeek  = _we && _we.phaseWeek  ? _we.phaseWeek  : undefined;
+    currentPhaseTotal = _we && _we.phaseTotal ? _we.phaseTotal : undefined;
+  }catch(e){ currentPhaseWeek = undefined; currentPhaseTotal = undefined; }
+
   // Circuit tip only shows on workout days
   const circuitTip = document.getElementById('circuit-tip');
   if (circuitTip) {
@@ -7367,6 +7412,8 @@ function estimateMax(lift, curEquip){
   // estimate to the equipment actually in use. This prevents impossible values like a 215 lb
   // "dumbbell hip thrust" when a barbell movement is swapped to dumbbells.
   const _eq=(curEquip||'').toLowerCase();
+  // Bands and non-loaded implements are not prescribed by lb weight at all.
+  if(/band|bodyweight|box|cone|ladder|parachute|hill|hurdle|jump rope|wall ball|rower|bike|erg|climbing|ghd|ring|sled|rope/i.test(_eq)) return null;
   let eqScale=1.0;
   if(/(^|\b)(db|dumbbell)\b/.test(_eq))               eqScale=0.45; // held dumbbells (pair) — much less than a loaded bar
   else if(/(^|\b)(kb|kettlebell)\b/.test(_eq))        eqScale=0.40; // kettlebell(s)
@@ -8195,6 +8242,9 @@ async function generateFamilyShoppingList() {
 // ==============================
 // ALLERGIES & INTOLERANCES
 // ==============================
+const HEALTH_CONDITIONS = ['IBS','GERD / Acid Reflux','Crohn\'s / IBD','Lactose Intolerance','Gluten Sensitivity','Diabetes','High Blood Pressure','High Cholesterol','Kidney Issues','Gallbladder Issues'];
+let selectedHealthConditions = new Set();
+try { const _hc = JSON.parse(localStorage.getItem('ffp_health_conditions')||'[]'); if(Array.isArray(_hc)) selectedHealthConditions = new Set(_hc); } catch(e){}
 const ALLERGENS = [
   { name: 'Gluten / Wheat', keywords: ['Whole Grain Bread','Whole Wheat Tortillas','Whole Wheat Pasta','Whole Wheat Flour','Whole Wheat Crackers','Oatmeal','Barley','Farro','Bagels (whole grain)','Graham Crackers','Whole Grain Cereal','Biscuits','Bread','Pasta','Flour','Couscous','Crackers','Soy Sauce (low sodium)','Worcestershire Sauce','Malt'] },
   { name: 'Dairy / Lactose', keywords: ['Skim Milk','2% Milk','Whole Milk','Cheddar Cheese','Mozzarella','Parmesan','Feta Cheese','String Cheese','Butter','Ghee','Heavy Cream','Half & Half','Sour Cream (light)','Cream Cheese (light)','Greek Yogurt (plain, non-fat)','Cottage Cheese (low-fat)','Ricotta (part-skim)','Whey Protein Powder','Casein Protein Powder','Cheese'] },
@@ -8217,6 +8267,27 @@ let hasAllergies = JSON.parse(localStorage.getItem('ffp_has_allergies') || 'fals
 let selectedAllergies = new Set(JSON.parse(localStorage.getItem('ffp_allergies') || '[]'));
 let allergyMealPlanOnly = JSON.parse(localStorage.getItem('ffp_allergy_meal_only') || 'false');
 
+function renderHealthConditions(){
+  var grid=document.getElementById('health-conditions-grid'); if(!grid) return;
+  var list=(typeof HEALTH_CONDITIONS!=='undefined')?HEALTH_CONDITIONS:['IBS','GERD / Acid Reflux','Crohn\'s / IBD','Lactose Intolerance','Gluten Sensitivity','Diabetes','High Blood Pressure','High Cholesterol','Kidney Issues','Gallbladder Issues'];
+  var sel=new Set((profile.healthConditions)||[]);
+  grid.innerHTML=list.map(function(hc){
+    var on=sel.has(hc);
+    return '<div class="ob-chip '+(on?'selected':'')+'" onclick="toggleHealthCondition(\''+hc.replace(/'/g,"\\'")+'\',this)">'+hc+'</div>';
+  }).join('');
+  var notes=document.getElementById('inp-health-notes'); if(notes && !notes.value) notes.value=profile.healthNutritionNotes||'';
+}
+function toggleHealthCondition(name, el){
+  el.classList.toggle('selected');
+  var set=new Set((profile.healthConditions)||[]);
+  if(set.has(name)) set.delete(name); else set.add(name);
+  profile.healthConditions=[...set];
+  try{ localStorage.setItem('ffp_health_conditions', JSON.stringify(profile.healthConditions)); localStorage.setItem('ffp_profile', JSON.stringify(profile)); }catch(e){}
+}
+function saveHealthNotes(val){
+  profile.healthNutritionNotes=val;
+  try{ localStorage.setItem('ffp_profile', JSON.stringify(profile)); }catch(e){}
+}
 function saveAllergies() {
   localStorage.setItem('ffp_has_allergies', JSON.stringify(hasAllergies));
   localStorage.setItem('ffp_allergies', JSON.stringify([...selectedAllergies]));
@@ -8379,7 +8450,7 @@ function toggleDietPref(name){
   if (selectedDietPrefs.has(name)) selectedDietPrefs.delete(name); else selectedDietPrefs.add(name);
   saveDietPrefs();
   purgeStaleMealPlans();
-  if (typeof renderDietPrefs === 'function') renderDietPrefs();
+  if (typeof renderDietPrefs === 'function') renderDietPrefs(); if(typeof renderHealthConditions==="function") renderHealthConditions();
 }
 // When dietary preferences change, any previously generated/cached meal plan may
 // contain now-excluded foods. Clear those caches so nothing stale is prescribed.
@@ -8650,6 +8721,8 @@ NUTRITION:
 ${macroStr}
 Body type for macros: ${bodyType}
 Food allergies/intolerances: ${allergiesList}${customAllergy ? ` + ${customAllergy}` : ''}
+Health conditions affecting nutrition: ${(profile.healthConditions&&profile.healthConditions.length)?profile.healthConditions.join(', '):'None reported'}${profile.healthNutritionNotes ? ` — notes: ${profile.healthNutritionNotes}` : ''}
+IMPORTANT: tailor meal suggestions to help manage any conditions above (e.g. IBS → favor low-FODMAP, reduce gas/bloating triggers; GERD → avoid reflux triggers; diabetes → manage carbs/glycemic load).
 Pantry items (sample): ${pantryItems}
 ${getRecoveryContextForCoach()}
 
@@ -8770,6 +8843,30 @@ function showTyping() {
 }
 
 // ── FLOATING COACH OVERLAY (available on every page) ──────────────────────
+function toggleAiLauncher(force){
+  var wrap=document.getElementById('ai-launcher');
+  var coach=document.getElementById('ai-coach-item');
+  var analyze=document.getElementById('ai-analyze-item');
+  var toggle=document.getElementById('ai-fab-toggle');
+  if(!wrap||!coach||!analyze||!toggle) return;
+  var open = (typeof force==='boolean') ? force : (coach.style.display==='none');
+  if(open){
+    coach.style.display='flex'; analyze.style.display='flex';
+    requestAnimationFrame(function(){ coach.style.opacity='1'; coach.style.transform='translateY(0)'; analyze.style.opacity='1'; analyze.style.transform='translateY(0)'; });
+    toggle.innerHTML='✕'; toggle.style.transform='rotate(90deg)';
+    wrap._open=true;
+  } else {
+    coach.style.opacity='0'; coach.style.transform='translateY(8px)'; analyze.style.opacity='0'; analyze.style.transform='translateY(8px)';
+    toggle.innerHTML='✨'; toggle.style.transform='rotate(0)';
+    setTimeout(function(){ if(!wrap._open){ coach.style.display='none'; analyze.style.display='none'; } },180);
+    wrap._open=false;
+  }
+}
+// close the launcher when tapping elsewhere
+document.addEventListener('click', function(e){
+  var wrap=document.getElementById('ai-launcher');
+  if(wrap && wrap._open && !wrap.contains(e.target)){ toggleAiLauncher(false); }
+}, true);
 function openCoachOverlay(){
   const ov=document.getElementById('coach-overlay');
   if(!ov) return;
@@ -9031,6 +9128,83 @@ function generateCoachReply(q) {
   const m = calcMacros();
   const name = profile.name ? profile.name.split(' ')[0] : '';
   const hi = name ? `${name}, ` : '';
+
+  // ── NEW ALLERGY / HEALTH CONDITION UPDATES (user tells the coach) ──
+  // "I'm allergic to shellfish", "I just found out I have IBS", "add gluten to my allergies"
+  try{
+    // Health conditions: map spoken phrases to our condition list.
+    const CONDITION_MAP=[
+      [/\bibs\b|irritable bowel/, 'IBS'],
+      [/gerd|acid reflux|heartburn|\breflux\b/, 'GERD / Acid Reflux'],
+      [/crohn|ulcerative colitis|\bcolitis\b|\bibd\b|inflammatory bowel/, "Crohn's / IBD"],
+      [/lactose intoleran|lactose/, 'Lactose Intolerance'],
+      [/gluten sensitiv|gluten intoleran|celiac|coeliac|gluten free/, 'Gluten Sensitivity'],
+      [/diabet|type 1|type 2|type one|type two|high blood sugar|insulin resist/, 'Diabetes'],
+      [/high blood pressure|hypertension|\bhbp\b/, 'High Blood Pressure'],
+      [/high cholesterol|high ldl|hyperlipid/, 'High Cholesterol'],
+      [/kidney|renal/, 'Kidney Issues'],
+      [/gallbladder|gall bladder|gallstone/, 'Gallbladder Issues'],
+    ];
+    const saysNew=/(i (just )?(have|got|developed|found out|was diagnosed)|i'?m dealing with|add|i now have|newly|diagnosed with|i suffer from|i deal with|can'?t (eat|have)|cut out|cutting out|avoid(ing)?)/.test(t)
+                 || /\b(allergic|allergy|allergies|intoleran|sensitiv|condition)\b/.test(t);
+    if(saysNew){
+      let added=[];
+      // conditions
+      for(const [re,label] of CONDITION_MAP){
+        if(re.test(t)){
+          var set=new Set((profile.healthConditions)||[]);
+          if(!set.has(label)){ set.add(label); profile.healthConditions=[...set];
+            try{ localStorage.setItem('ffp_health_conditions', JSON.stringify(profile.healthConditions)); localStorage.setItem('ffp_profile', JSON.stringify(profile)); }catch(e){}
+            added.push(label);
+          }
+        }
+      }
+      // allergies — match against the ALLERGENS list by name/keyword, plus common foods
+      if(/allerg|intoleran|can'?t (eat|have)|sensitiv/.test(t) && typeof ALLERGENS!=='undefined'){
+        let allergyAdded=[];
+        for(const a of ALLERGENS){
+          const nm=a.name.toLowerCase();
+          const simple=nm.split('/')[0].trim();
+          if(t.includes(simple) || t.includes(nm)){
+            if(!selectedAllergies.has(a.name)){ selectedAllergies.add(a.name); allergyAdded.push(a.name); }
+          }
+        }
+        // common single-word allergens not always in list head
+        const COMMON={
+          'shellfish':'Shellfish','shrimp':'Shellfish','crab':'Shellfish','lobster':'Shellfish','prawn':'Shellfish','crawfish':'Shellfish','crayfish':'Shellfish','scallop':'Shellfish','clam':'Shellfish','oyster':'Shellfish','mussel':'Shellfish',
+          'peanut':'Peanuts',
+          'tree nut':'Tree Nuts','almond':'Tree Nuts','walnut':'Tree Nuts','cashew':'Tree Nuts','pecan':'Tree Nuts','pistachio':'Tree Nuts','hazelnut':'Tree Nuts','macadamia':'Tree Nuts','brazil nut':'Tree Nuts',
+          'egg':'Eggs',
+          'soy':'Soy','soya':'Soy','edamame':'Soy','tofu':'Soy',
+          'fish':'Fish','salmon':'Fish','tuna':'Fish','cod':'Fish','tilapia':'Fish','anchov':'Fish',
+          'sesame':'Sesame','tahini':'Sesame',
+          'dairy':'Dairy / Lactose','milk':'Dairy / Lactose','lactose':'Dairy / Lactose','cheese':'Dairy / Lactose','whey':'Dairy / Lactose','casein':'Dairy / Lactose',
+          'gluten':'Gluten / Wheat','wheat':'Gluten / Wheat','celiac':'Gluten / Wheat','coeliac':'Gluten / Wheat','barley':'Gluten / Wheat','rye':'Gluten / Wheat',
+          'corn':'Corn','maize':'Corn',
+          'nightshade':'Nightshades','tomato':'Nightshades','eggplant':'Nightshades','aubergine':'Nightshades','bell pepper':'Nightshades','paprika':'Nightshades',
+          'fodmap':'FODMAPs / IBS','ibs':'FODMAPs / IBS',
+          'sulfite':'Sulfites','sulphite':'Sulfites',
+          'fructose':'Fructose',
+          'histamine':'Histamine Intolerance'
+        };
+        for(const k in COMMON){ if(t.includes(k)){ const lbl=COMMON[k];
+          // only add if that allergen label exists or as custom
+          let exists=false; for(const a of ALLERGENS){ if(a.name.toLowerCase().includes(lbl.toLowerCase())){ if(!selectedAllergies.has(a.name)){selectedAllergies.add(a.name);allergyAdded.push(a.name);} exists=true; } }
+          if(!exists && !selectedAllergies.has(lbl)){ selectedAllergies.add(lbl); allergyAdded.push(lbl); }
+        } }
+        if(allergyAdded.length){
+          hasAllergies=true;
+          try{ localStorage.setItem('ffp_has_allergies', JSON.stringify(true)); localStorage.setItem('ffp_allergies', JSON.stringify([...selectedAllergies])); }catch(e){}
+          added=added.concat(allergyAdded.map(a=>a+' (allergy)'));
+        }
+      }
+      if(added.length){
+        try{ if(typeof updateNutritionPage==='function') updateNutritionPage(); }catch(e){}
+        return `${hi}got it — I've added ${added.join(', ')} to your profile. I'll tailor your meals and macros around ${added.length>1?'these':'this'} from now on${/ibs|gerd|crohn|lactose|gluten|diabet/.test(t)?' (e.g. easing gas, bloating, and cramp triggers where relevant)':''}. You can review or edit anytime in the Nutrition tab.`;
+      }
+    }
+  }catch(e){}
+
   const autoMode = deriveTrainingMode();
   const modeInfo = {
     strength:    { name: 'Strength', reps: '3–7 reps', pct: '85–95% of your 1RM', rest: '2–5 min', focus: 'moving heavy weight with great technique' },
@@ -9651,6 +9825,45 @@ function generateCoachReply(q) {
     }
   }
   // ============ END STATUS LAYER ============
+
+  // ============ APP KNOWLEDGE & NAVIGATION LAYER ============
+  // "What can you do" / help
+  if(/(what can you (do|help)|how (do|can) (i|you) use|what are you|help me|what can i ask|commands|capabilities|^help$)/.test(t)){
+    return `${hi}I'm your in-app coach — I can explain anything in Milton, walk you through where to find it, answer training & nutrition questions, and make changes for you. A few things I can DO right now:\n\n• Change your training mode, style, or days/week\n• Move or reschedule workouts ("do workout 3 today")\n• Add competitions & set your sport seasons\n• Log maxes, switch RPE vs %, set a recovery day\n• Update allergies & health conditions ("I have IBS now")\n• Adjust meals/day, explain your macros\n\nOr ask me things like "what does the hypertrophy phase mean?", "where do I set my season?", or "what should I eat before training?" What do you need?`;
+  }
+  // Navigation: "where do I / where is ..."
+  if(/(where (do|can) i|where is|how do i (find|get to|set|change|add|see))/.test(t)){
+    if(/season|competition|game ?day|periodiz/.test(t)) return `${hi}go to **Workouts → Edit Program** and scroll to **Sport Seasons**. Add your season start & end dates and Milton auto-periodizes you toward Power for in-season. (Or just tell me "my season is June 1 to August 31.")`;
+    if(/max|1rm|one rep/.test(t)) return `${hi}your maxes live in **Workouts → My Maxes** (💪). Enter a tested max for any lift and that exercise's weights update automatically. You can also just tell me "my back squat max is 315."`;
+    if(/allerg|health condition|ibs|nutrition restriction/.test(t)) return `${hi}open the **Nutrition** tab and scroll to the settings cards — **Food Allergies**, **Dietary Preferences**, and **Health Conditions**. Or just tell me "I'm allergic to shellfish" and I'll update it.`;
+    if(/experience|level|beginner|advanced/.test(t)) return `${hi}set your **Experience Level** in **Workouts → Edit Program** (Beginner / Intermediate / Advanced). It controls which exercises you get — barbell work is Advanced-only.`;
+    if(/training (mode|phase)|hypertrophy|strength|power|endurance/.test(t)) return `${hi}change your **Training Mode** in **Workouts → Edit Program** (Power / Strength / Hypertrophy / Endurance / Auto). Or tell me "switch me to hypertrophy."`;
+    if(/recovery|hrv|sleep|readiness|wearable/.test(t)) return `${hi}log recovery data in the **Recovery** tab — sleep (enter bedtime & wake, it auto-calculates), HRV, resting HR, soreness, and more. Your readiness score drives how hard Milton pushes you.`;
+    if(/workout|schedule|calendar|today/.test(t)) return `${hi}your workouts are in the **Workouts** tab — Today, Week, Month, Year, and Phase views. The home screen also shows today's session up top.`;
+    if(/share/.test(t)) return `${hi}open any workout and tap the **↗ Share** button — you can send it as clean text or a branded image.`;
+    if(/nutrition|meal|macro|recipe|food/.test(t)) return `${hi}everything food is in the **Nutrition** tab — your macros, meal ideas, recipes, pantry, and the meal scanner. Ask me "what are my macros?" anytime.`;
+    return `${hi}most settings live in **Workouts → Edit Program** (training style, mode, experience, days/week, seasons) and the **Nutrition** and **Recovery** tabs. What specifically are you trying to find? I can point you right to it.`;
+  }
+  // Feature explanations: "what is / what does X mean / explain X"
+  if(/(what is|what does|what'?s|explain|tell me about|how does)/.test(t)){
+    if(/readiness|recovery score/.test(t)) return `${hi}your **Readiness score** blends your recovery inputs (HRV, resting HR, sleep, soreness, fatigue) into one daily number. Green = push hard, yellow = hold steady, red = back off or recover. Milton uses it to auto-adjust your training load that day.`;
+    if(/periodiz/.test(t)) return `${hi}**periodization** is planning your training in phases over time. Milton cycles you through Anatomical Adaptation → Muscular Endurance → Hypertrophy → Strength → Power, timed so you peak for Power when your season starts. Set your season dates and it does this automatically.`;
+    if(/hypertrophy/.test(t)) return `${hi}**Hypertrophy** builds muscle size — moderate loads (67–80% 1RM), 8–12 reps, 60–90s rest. Great off-season base work.`;
+    if(/muscular endurance|endurance phase/.test(t)) return `${hi}**Muscular Endurance** builds work capacity — lighter loads (55–65% 1RM), 15–20 reps, short rest (≤60s). A base-building phase for most athletes.`;
+    if(/strength phase|max strength|\bstrength\b/.test(t)) return `${hi}**Strength** builds maximal force — heavy loads (85–90% 1RM), 3–6 reps, long rest (2–5 min). The bridge from size to power.`;
+    if(/power phase|\bpower\b/.test(t)) return `${hi}**Power** converts strength into explosive speed — moderate loads (45–55% 1RM) moved as fast as possible, 3–5 reps, full recovery. This is your peak/in-season phase.`;
+    if(/rpe/.test(t)) return `${hi}**RPE** (Rate of Perceived Exertion) is a 1–10 effort scale. If you haven't tested your maxes, Milton can prescribe by RPE instead of percentages — e.g. "stop at RPE 8" means leave ~2 reps in the tank. Toggle it in Edit Program or say "use RPE instead of maxing."`;
+    if(/1rm|one rep max|\bmax\b/.test(t)) return `${hi}your **1RM** is the most weight you can lift once. Milton builds every strength prescription as a percentage of it. Enter a tested max in My Maxes (or tell me) and that lift's weights become exact; lifts without one use a safe estimate.`;
+    if(/progression|regression|ladder/.test(t)) return `${hi}Milton uses **progression ladders** — each movement runs from an easy version up to the hardest. If something's too hard it drops you down a rung; as you get stronger it moves you up, always matched to your experience level.`;
+    if(/deload/.test(t)) return `${hi}a **deload** is a planned easy week — about half your normal volume — to let your body recover and adapt before pushing again. Milton schedules these automatically in longer plans.`;
+    if(/macro/.test(t)) return `${hi}your **macros** are your daily protein, carbs, and fat targets, calculated from your body stats, goal, and activity. ${m?`Right now: ${macroLine}`:'Complete your profile to see them.'} Protein is the priority for keeping muscle.`;
+  }
+  // Fitness/nutrition how-to that isn't app-specific
+  if(/(plateau|not (getting|seeing) (results|gains|progress)|stuck)/.test(t)) return `${hi}plateaus usually mean it's time to change a variable. Options: progress your load or reps, switch training mode (e.g. strength → power), check that you're eating and sleeping enough, or take a deload week. Want me to switch your phase or check your recovery trend?`;
+  if(/(sore|soreness|doms|recover faster)/.test(t)) return `${hi}for soreness: prioritize protein and sleep, stay hydrated, do light movement (walk, easy bike), and don't skip warm-ups. If a muscle group is very sore, Milton can swap or lighten that day — log your soreness in the Recovery tab and I'll adjust.`;
+  if(/(how much protein|protein (should|do) i)/.test(t)) return `${hi}${m?`your target is **${m.protein}g protein/day**`:'aim for roughly 0.7–1g of protein per pound of bodyweight'} — spread across your meals. It's the single most important macro for building and keeping muscle.`;
+  if(/(lose weight|lose fat|cut|get lean)/.test(t) && !/workout|train/.test(t)) return `${hi}fat loss comes down to a modest calorie deficit while keeping protein high and strength training to hold onto muscle. Want me to set your goal to "lose fat"? Just say the word and I'll adjust your macros and add a cardio finisher.`;
+  // ============ END APP KNOWLEDGE LAYER ============
 
   // default
   return `${hi}here's where you stand: you're on the **${(typeof PROGRAM_STYLES!=='undefined'&&PROGRAM_STYLES[getTrainingStyle&&getTrainingStyle()])?PROGRAM_STYLES[getTrainingStyle()].label:'your'}** program in your **${mode.name}** phase (${mode.reps}), working to ${goal}. ${m ? macroLine : ''}\n\nAsk me about anything in the app — for example:\n• "What's my workout today?" or "What days do I train?"\n• "Switch me to powerlifting" or "Train 4 days a week"\n• "What are my macros?" or "What should I eat before training?"\n• "Make today a recovery day" or "I have a game Saturday"\n• "Use RPE instead of maxing" or "Show my maxes"\n• "How do I break a plateau?" or "Explain my current phase"`;
@@ -10308,7 +10521,7 @@ const APP_TOUR_STEPS = [
   { page:'account', nav:'tabnav-account', icon:'💾', title:'Back up your data', target:'#acct-overview', action:()=>_tourClickSub("showAccountTab('overview'"),
     body:'Your data lives on your device — so <b>create a free account or export a backup</b> from here to protect your program if you switch devices. You can replay this tour anytime from here too.' },
   // ---- COACH ----
-  { page:'home', nav:'tabnav-home', icon:'💬', title:'Your AI Coach', target:'#coach-fab',
+  { page:'home', nav:'tabnav-home', icon:'💬', title:'Your AI Coach', target:'#ai-fab-toggle',
     body:'This is your <b>Coach</b> button — tap it anytime to ask about your workout, macros, recipes, or schedule, or to make changes like \u201cswitch me to HYROX\u201d or \u201cI have a meet Saturday.\u201d That\u2019s the whole app — you\u2019re ready to train! 💪' },
 ];
 let appTourIndex = 0;
@@ -11044,7 +11257,7 @@ function getObStepHTML(step) {
               <input type="text" id="ob-rec-sport" placeholder="e.g. Tennis, pickleball, golf…" value="${profile.recreationalSport||''}" oninput="obSyncSportPos()">
             </div>
           </div>
-          <div id="ob-sport-pos-wrap" style="${((profile.competitiveSport||'')||(profile.recreationalSport||''))?'':'display:none'};margin-top:0.5rem">
+          <div id="ob-sport-pos-wrap" style="margin-top:0.5rem">
             <div class="ob-input-group">
               <label>What position(s) or event(s) will you play?</label>
               <input type="text" id="ob-sport-position" placeholder="e.g. Pitcher · Point guard · 100m & long jump · Goalkeeper" value="${profile.sportPosition||''}" oninput="profile.sportPosition=this.value;try{localStorage.setItem('ffp_profile',JSON.stringify(profile))}catch(e){}">
@@ -11077,6 +11290,20 @@ function getObStepHTML(step) {
               <div class="ob-chip ${selectedAllergies.has(a.name)?'selected':''}"
                 onclick="obToggleAllergy('${a.name.replace(/'/g,"\\'")}',this)">${a.name}</div>
             `).join('')}
+          </div>
+        </div>
+        <div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border)">
+          <div style="font-weight:800;font-size:0.95rem;margin-bottom:0.3rem">Any health conditions that affect your nutrition?</div>
+          <div style="font-size:0.8rem;color:var(--muted);margin-bottom:0.75rem">Beyond allergies — e.g. IBS, GERD/reflux, Crohn's, lactose intolerance. Milton tailors your meals to help manage symptoms like gas, bloating, or cramps.</div>
+          <div class="ob-multi-grid" style="margin-bottom:0.75rem">
+            ${HEALTH_CONDITIONS.map(hc => `
+              <div class="ob-chip ${selectedHealthConditions.has(hc)?'selected':''}"
+                onclick="obToggleHealthCondition('${hc.replace(/'/g,"\\'")}',this)">${hc}</div>
+            `).join('')}
+          </div>
+          <div class="ob-input-group">
+            <label>Anything else? (optional)</label>
+            <input type="text" id="ob-health-notes" placeholder="e.g. low-FODMAP needed, acid reflux triggers…" value="${profile.healthNutritionNotes||''}" oninput="obSyncHealthNotes()">
           </div>
         </div>
         <div class="ob-skip" onclick="obNext()">Skip for now</div>
@@ -11277,14 +11504,13 @@ function obToggleActivityGoal(goal, el) {
 
 // Save sport names as the user types and reveal the position/event field
 function obSyncSportPos(){
+  // Only persist the typed values — never touch the DOM/layout here, or Android drops
+  // input focus and closes the keyboard mid-typing. The position field is always visible.
   const cs = document.getElementById('ob-comp-sport');
   const rs = document.getElementById('ob-rec-sport');
   if (cs) profile.competitiveSport = cs.value;
   if (rs) profile.recreationalSport = rs.value;
   try { localStorage.setItem('ffp_profile', JSON.stringify(profile)); } catch(e){}
-  const posWrap = document.getElementById('ob-sport-pos-wrap');
-  const hasSportName = !!((cs&&cs.value.trim())||(rs&&rs.value.trim()));
-  if (posWrap) posWrap.style.display = hasSportName ? 'block' : 'none';
 }
 
 function obSetAllergy(val) {
@@ -11296,6 +11522,17 @@ function obSetAllergy(val) {
   if (picker) picker.style.display = val ? 'block' : 'none';
 }
 
+function obToggleHealthCondition(name, el){
+  el.classList.toggle('selected');
+  if(selectedHealthConditions.has(name)) selectedHealthConditions.delete(name);
+  else selectedHealthConditions.add(name);
+  try{ localStorage.setItem('ffp_health_conditions', JSON.stringify([...selectedHealthConditions])); }catch(e){}
+  try{ profile.healthConditions=[...selectedHealthConditions]; localStorage.setItem('ffp_profile', JSON.stringify(profile)); }catch(e){}
+}
+function obSyncHealthNotes(){
+  var el=document.getElementById('ob-health-notes')||document.getElementById('prof-health-notes');
+  if(el){ profile.healthNutritionNotes=el.value; try{ localStorage.setItem('ffp_profile', JSON.stringify(profile)); }catch(e){} }
+}
 function obToggleAllergy(name, el) {
   el.classList.toggle('selected');
   if (selectedAllergies.has(name)) selectedAllergies.delete(name);
@@ -11454,6 +11691,7 @@ function profSelectSingle(field, value, el) {
 }
 
 function renderProfStep() {
+  setTimeout(function(){ if(document.getElementById("prof-seasons-control") && typeof renderSeasonsControl==="function") renderSeasonsControl(); },0);
   const total = PROF_STEPS.length;
   const pct = Math.round((profCurrentStep / (total - 1)) * 100);
   document.getElementById('prof-progress').style.width = pct + '%';
@@ -11758,22 +11996,9 @@ function getProfStepHTML(step) {
 
         ${selectedActivityGoals.has('Competitive Sport')||selectedActivityGoals.has('Recreational Sport') ? `
         <div style="margin-top:1.25rem">
-          <div style="font-size:0.7rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem">Want a competition-periodized yearly schedule?</div>
-          <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem">
-            <div onclick="setCompScheduleProf(false)" style="flex:1;text-align:center;padding:0.65rem;border-radius:9px;cursor:pointer;font-size:0.85rem;font-weight:700;border:2px solid ${!wantsCompSchedule?'var(--accent)':'var(--border)'};color:${!wantsCompSchedule?'var(--accent)':'var(--muted)'};background:${!wantsCompSchedule?'rgba(45,122,95,0.1)':'var(--surface)'};transition:all 0.2s">No thanks</div>
-            <div onclick="setCompScheduleProf(true)" style="flex:1;text-align:center;padding:0.65rem;border-radius:9px;cursor:pointer;font-size:0.85rem;font-weight:700;border:2px solid ${wantsCompSchedule?'var(--blue)':'var(--border)'};color:${wantsCompSchedule?'var(--blue)':'var(--muted)'};background:${wantsCompSchedule?'rgba(58,153,114,0.1)':'var(--surface)'};transition:all 0.2s">🏆 Yes, periodize for competition</div>
-          </div>
-          ${wantsCompSchedule ? `
-          <div style="font-size:0.7rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem">Competition months</div>
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.4rem;margin-bottom:0.75rem">
-            ${MONTHS.map((m,i) => `
-              <div class="month-tile ${competitionMonths.has(i)?'comp-month':''}" onclick="toggleCompMonth(${i})">${m}</div>`).join('')}
-          </div>
-          <div id="periodization-preview" style="display:none">
-            <div style="font-size:0.72rem;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--text);padding-bottom:0.5rem;border-bottom:1px solid var(--border);margin-bottom:0.75rem">📅 Your Yearly Periodization</div>
-            <div id="periodization-calendar" style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.4rem"></div>
-            <div class="alert alert-success" style="margin-top:0.75rem;font-size:0.8rem" id="periodization-desc"></div>
-          </div>` : ''}
+          <div style="font-size:0.7rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem">Season dates (auto-periodized)</div>
+          <p style="font-size:0.78rem;color:var(--muted);margin-bottom:0.6rem">Add your competition season(s) by start &amp; end date. Milton periodizes automatically — Muscular Endurance → Hypertrophy → Strength → Power — so you peak for Power in-season.</p>
+          <div id="prof-seasons-control"></div>
           ` : ''}
         </div>
         <div class="ob-skip" onclick="profNext()">No sport — just general fitness</div>
@@ -11801,6 +12026,20 @@ function getProfStepHTML(step) {
               <div class="ob-chip ${selectedAllergies.has(a.name)?'selected':''}"
                 onclick="profToggleAllergy('${a.name.replace(/'/g,"\\'")}',this)">${a.name}</div>
             `).join('')}
+          </div>
+        </div>
+        <div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border)">
+          <div style="font-weight:800;font-size:0.95rem;margin-bottom:0.3rem">Any health conditions that affect your nutrition?</div>
+          <div style="font-size:0.8rem;color:var(--muted);margin-bottom:0.75rem">Beyond allergies — e.g. IBS, GERD/reflux, Crohn's, lactose intolerance. Milton tailors your meals to help manage symptoms like gas, bloating, or cramps.</div>
+          <div class="ob-multi-grid" style="margin-bottom:0.75rem">
+            ${HEALTH_CONDITIONS.map(hc => `
+              <div class="ob-chip ${selectedHealthConditions.has(hc)?'selected':''}"
+                onclick="obToggleHealthCondition('${hc.replace(/'/g,"\\'")}',this)">${hc}</div>
+            `).join('')}
+          </div>
+          <div class="ob-input-group">
+            <label>Anything else? (optional)</label>
+            <input type="text" id="prof-health-notes" placeholder="e.g. low-FODMAP needed, acid reflux triggers…" value="${profile.healthNutritionNotes||''}" oninput="obSyncHealthNotes()">
           </div>
         </div>
         <div class="ob-skip" onclick="profNext()">Skip for now</div>
@@ -16162,9 +16401,21 @@ function prescriptionLine(s, ex, curEquip, isWeighted, ph, pyramidHTML){
   if(isSpeedAgility(s)){
     return `<div style="${style}">${ph.sets} sets × ${distanceFromNote(s.note)}</div>`;
   }
-  // Timed exercises → sets × time
+  // Timed exercises → sets × time. If the exercise is LOADED (carry etc.), include the weight too.
   if(isTimedNote(s.note)){
-    return `<div style="${style}">${ph.sets} sets × ${timeFromNote(s.note)}</div>`;
+    let wtTxt='';
+    if(isWeighted){
+      try{
+        const mx=(maxes&&maxes[ex]&&maxes[ex].oneRM)?maxes[ex].oneRM:((typeof estimateMax==='function')?estimateMax(ex,curEquip):null);
+        if(mx){
+          // carries/timed holds: prescribe a sensible working load (~60% of 1RM, barbell floor if needed)
+          let w=Math.round(mx*0.60/5)*5;
+          if(/^BB|barbell/i.test(curEquip||'')) w=Math.max(45,w);
+          wtTxt=` @ ${w} lb`;
+        }
+      }catch(e){}
+    }
+    return `<div style="${style}">${ph.sets} sets × ${timeFromNote(s.note)}${wtTxt}</div>`;
   }
   // Plyometric / jump / explosive → sets × reps (never a percentage)
   if(isPlyo(s)){
@@ -16625,7 +16876,8 @@ function _workoutToText(wo, woNum){
     if(typeof adaptSectionToEquipment==='function' && !equipOverride && !override){ adapted=adaptSectionToEquipment(s); }
     const ex=override||adapted.exercise||s.exercise||s.lift||s.head||'';
     const curEquip=equipOverride||adapted.equipment||s.equipment||'';
-    const isWeighted=weightedEquip.some(eq=>(curEquip||'').startsWith(eq));
+    const _nonLoaded=/band|bodyweight|box|cone|ladder|parachute|hill|hurdle|rope|jump rope|wall ball|rower|bike|erg|climbing|ghd|ring/i.test(curEquip||'');
+    const isWeighted=!_nonLoaded && weightedEquip.some(eq=>(curEquip||'').startsWith(eq));
     // Build a plain prescription string
     let presc='';
     try{
@@ -16637,7 +16889,7 @@ function _workoutToText(wo, woNum){
         // weight range from max/estimate
         const mx=(maxes&&maxes[ex]&&maxes[ex].oneRM)?maxes[ex].oneRM:((typeof estimateMax==='function')?estimateMax(ex,curEquip):null);
         if(mx){
-          const sets=(typeof getPyramidSets==='function')?getPyramidSets(currentPhase,mx,/^BB|barbell/i.test(curEquip)):null;
+          const sets=(typeof getPyramidSets==='function')?getPyramidSets(currentPhase,mx,/^BB|barbell/i.test(curEquip),(typeof currentPhaseWeek!=='undefined'?currentPhaseWeek:undefined),(typeof currentPhaseTotal!=='undefined'?currentPhaseTotal:undefined)):null;
           if(sets&&sets.length){
             const work=sets.filter(x=>!x.warmup);
             const ws=work.map(x=>`${x.weight}lb×${x.reps}`).join(', ');
@@ -16704,7 +16956,7 @@ function _workoutToImage(wo, woNum){
         else if(typeof isConditioningNote==='function'&&isConditioningNote(s.note)) presc=s.note;
         else if(isWeighted){
           var mx=(maxes&&maxes[ex]&&maxes[ex].oneRM)?maxes[ex].oneRM:((typeof estimateMax==='function')?estimateMax(ex,curEquip):null);
-          if(mx){ var sets=(typeof getPyramidSets==='function')?getPyramidSets(currentPhase,mx,/^BB|barbell/i.test(curEquip)):null;
+          if(mx){ var sets=(typeof getPyramidSets==='function')?getPyramidSets(currentPhase,mx,/^BB|barbell/i.test(curEquip),(typeof currentPhaseWeek!=='undefined'?currentPhaseWeek:undefined),(typeof currentPhaseTotal!=='undefined'?currentPhaseTotal:undefined)):null;
             if(sets&&sets.length){ presc=sets.filter(function(x){return !x.warmup;}).map(function(x){return x.weight+'lb×'+x.reps;}).join(', '); }
             else presc=ph.sets+' sets × '+ph.reps+' reps'; }
           else presc=ph.sets+' sets × '+ph.reps+' reps';
@@ -16983,6 +17235,36 @@ function completeWorkout(type, woNum, feel){
   completed.push({ id:'W'+woNum, type, feel, date:new Date().toISOString() });
   localStorage.setItem('ffp_completed_workouts', JSON.stringify(completed));
   try{ computeDailyScore(); }catch(e){}
+
+  // ── KEEP THE ROTATION IN SYNC ────────────────────────────────────────────────
+  // Marking a workout done advances the rotation so the NEXT training day shows the
+  // NEXT workout — even if this was logged late (e.g. Thursday's session tapped on
+  // Friday). Previously completion only *logged* the workout and never moved the
+  // sequence pin, so the rotation could get stuck repeating the one you just did.
+  try{
+    if(typeof getActiveProgram==='function' && typeof setSequencePin==='function'
+       && typeof getUserSchedule==='function' && typeof woNum==='number'){
+      const prog = getActiveProgram();
+      const progLen = (prog && prog.length) ? prog.length : 12;
+      // Next workout in the rotation (woNum is 1-based, so its 0-based index is
+      // woNum-1; the NEXT index is woNum, wrapped).
+      const nextIdx = ((woNum % progLen) + progLen) % progLen;
+      // Find the next SCHEDULED workout day strictly after today.
+      const sched = getUserSchedule();
+      const t0 = new Date(); const day0 = new Date(t0.getFullYear(),t0.getMonth(),t0.getDate());
+      const nd = new Date(day0); let guard=0;
+      do { nd.setDate(nd.getDate()+1); guard++; }
+      while(((sched[nd.getDay()]||'rest')!=='workout') && guard<400);
+      const ndISO = (typeof ymd==='function') ? ymd(nd)
+                   : new Date(nd.getFullYear(),nd.getMonth(),nd.getDate()).toISOString().slice(0,10);
+      // Guard against double-advance: only move the pin if that next training day
+      // isn't already pointing at the next workout (idempotent on repeat taps).
+      let alreadyNext=false;
+      try{ alreadyNext = (typeof getSessionIndexForDate==='function')
+            && ((((getSessionIndexForDate(nd))%progLen)+progLen)%progLen === nextIdx); }catch(e){}
+      if(!alreadyNext) setSequencePin(ndISO, nextIdx);
+    }
+  }catch(e){}
   // Auto-progression hint based on how it felt, stored per workout type
   if(feel==='easy'){
     const prog = JSON.parse(localStorage.getItem('ffp_progression')||'{}');
@@ -17002,7 +17284,7 @@ function completeWorkout(type, woNum, feel){
 
 
 function estimate1RM(weight,reps){if(reps===1)return weight;return Math.round(weight*(1+reps/30));}
-function getPyramidSets(phaseKey,oneRepMax,isBarbell){
+function getPyramidSets(phaseKey,oneRepMax,isBarbell,phaseWeek,phaseTotal,weeksToComp){
   // WORKING sets only — matched to phase science:
   //  strength 85–90% ×3–6 · hypertrophy 70–78% ×8–12 · endurance 55–62% ×15–20
   //  power 45–55% ×3–5 (explosive) · maxassess/competition build to a heavy top set.
@@ -17012,9 +17294,55 @@ function getPyramidSets(phaseKey,oneRepMax,isBarbell){
     strength:[{pct:0.85,reps:'6'},{pct:0.88,reps:'4'},{pct:0.90,reps:'3'}],
     maxassess:[{pct:0.85,reps:'2'},{pct:0.92,reps:'1'},{pct:0.97,reps:'1'}],
     power:[{pct:0.45,reps:'5'},{pct:0.50,reps:'4'},{pct:0.55,reps:'3'}],
-    competition:[{pct:0.85,reps:'2'},{pct:0.90,reps:'1'},{pct:0.95,reps:'1'}]
+    competition:[{pct:0.85,reps:'2'},{pct:0.90,reps:'1'},{pct:0.95,reps:'1'}],
+    // Pre-comp taper: keep the nervous system primed with heavy singles/doubles
+    // but very low volume, so the athlete sharpens without fatigue.
+    precomp:[{pct:0.80,reps:'3'},{pct:0.85,reps:'2'},{pct:0.88,reps:'1'}],
+    // Recovery / deload: light, submaximal, to dissipate fatigue after a meet
+    // or at a planned deload week.
+    recovery:[{pct:0.50,reps:'10'},{pct:0.55,reps:'8'},{pct:0.60,reps:'6'}]
   };
-  const work=(WORK[phaseKey]||WORK.hypertrophy);
+  // ── WITHIN-PHASE WEEKLY PROGRESSION ──────────────────────────────────────────
+  // Previously every week of a block prescribed identical load. Now intensity
+  // ramps across the weeks of a block (progressive overload) for accumulation
+  // phases, and TAPERS for peaking phases so the athlete arrives fresh at a meet.
+  // phaseWeek = which week of the block (1-based); phaseTotal = block length.
+  // Backward compatible: if not supplied, multiplier is a neutral 1.0.
+  function weeklyLoadMult(key,wk,total,weeksToComp){
+    // CALENDAR-AWARE TAPER (highest priority): if a real competition date is set
+    // and it's within the final 3 weeks, taper by ACTUAL weeks-to-meet so the
+    // athlete peaks exactly on meet day — crisper than block-position tapering.
+    //   3 weeks out → −4% · 2 weeks → −7% · 1 week → −10% · meet week → −3% (sharp, fresh)
+    if(typeof weeksToComp==='number' && weeksToComp>=0 && weeksToComp<=3){
+      const taperByWeek={3:0.96, 2:0.93, 1:0.90, 0:0.97};
+      return taperByWeek[weeksToComp];
+    }
+    if(!wk||!total||total<2) return 1.0;
+    const t=total, w=Math.max(1,Math.min(wk,t));
+    const frac=(w-1)/(t-1); // 0 on week 1 → 1 on the final week
+    if(key==='competition'||key==='precomp'||key==='maxassess'){
+      // TAPER: shed a little load each week to peak (−2% per step, down to ~−8%).
+      return 1 - 0.08*frac;
+    }
+    if(key==='power'){
+      // Power stays crisp: a gentle rise then hold (bar speed matters, not grind).
+      return 1 + 0.02*frac;
+    }
+    if(key==='recovery'||key==='deload'){
+      return 0.85; // deload week — intentionally lighter all the way through.
+    }
+    // ACCUMULATION (hypertrophy/strength/endurance): ramp +~2% per week,
+    // up to about +6% by the end of the block.
+    return 1 + 0.06*frac;
+  }
+  const _weeksToComp = (typeof weeksToComp==='number') ? weeksToComp
+                      : ((typeof weeksUntilCompetition==='function') ? weeksUntilCompetition() : null);
+  const _wkMult = weeklyLoadMult(phaseKey, phaseWeek, phaseTotal, _weeksToComp);
+  const work=(WORK[phaseKey]||WORK.hypertrophy).map(function(w){
+    // Apply the weekly multiplier to each working set, capped so it never
+    // exceeds a true 1RM (0.98) for safety.
+    return {pct: Math.min(0.98, w.pct*_wkMult), reps:w.reps, note:w.note};
+  });
   const topPct=work[0].pct; // intensity of the FIRST working set (fraction of 1RM)
 
   // ── WARM-UP RAMP ────────────────────────────────────────────────────────────
@@ -17268,7 +17596,7 @@ function setMealsPerDay(n){
   localStorage.setItem('ffp_meals_per_day', String(n));
   renderMealsPerDayPicker();
   if(typeof renderFamilyNutritionSettings==="function") renderFamilyNutritionSettings();
-  if(typeof renderDietPrefs==="function") renderDietPrefs();
+  if(typeof renderDietPrefs==="function") renderDietPrefs(); if(typeof renderHealthConditions==="function") renderHealthConditions();
   if(typeof renderRestaurantCard==="function") renderRestaurantCard();
   if(typeof renderHomePage==='function') renderHomePage();
 }
@@ -17497,7 +17825,7 @@ function renderMacrosTab(){
   if(!statsEl)return;
   renderMealsPerDayPicker();
   if(typeof renderFamilyNutritionSettings==="function") renderFamilyNutritionSettings();
-  if(typeof renderDietPrefs==="function") renderDietPrefs();
+  if(typeof renderDietPrefs==="function") renderDietPrefs(); if(typeof renderHealthConditions==="function") renderHealthConditions();
   if(typeof renderRestaurantCard==="function") renderRestaurantCard();
   if(!m){statsEl.innerHTML='<div class="card" style="padding:1rem;color:var(--muted);text-align:center">Complete your profile to see your macros</div>';return;}
   statsEl.innerHTML=[{label:'Calories',val:m.total,unit:'kcal',color:'var(--cal-color)'},{label:'Protein',val:m.protein,unit:'g',color:'var(--prot-color)'},{label:'Carbs',val:m.carbs,unit:'g',color:'var(--carb-color)'},{label:'Fat',val:m.fat,unit:'g',color:'var(--fat-color)'},{label:'Water',val:m.waterOz||Math.round((profile&&profile.weight||180)/2),unit:'oz',color:'var(--water-color)'}].map(s=>`<div class="card" style="text-align:center;padding:0.75rem 0.5rem"><div style="display:flex;align-items:baseline;justify-content:center;gap:0.18rem"><span style="font-size:1.4rem;font-weight:800;color:${s.color}">${s.val}</span><span style="font-size:0.66rem;font-weight:700;color:${s.color}">${s.unit}</span></div><div style="font-size:0.68rem;color:var(--muted);margin-top:0.1rem">${s.label}</div></div>`).join('');

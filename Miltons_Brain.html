@@ -2342,6 +2342,9 @@
           <p style="font-size:0.83rem;color:var(--muted);margin-bottom:1rem">Restore from a previously exported backup file. This will overwrite your current data.</p>
           <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(this)">
           <button class="btn btn-outline" onclick="document.getElementById('import-file').click()" style="width:100%;margin-bottom:0.5rem">Choose Backup File</button>
+          <div style="font-size:0.72rem;color:var(--muted);text-align:center;margin:0.4rem 0">\u2014 or paste your backup text \u2014</div>
+          <textarea id="restore-paste-box" placeholder="Paste your backup here…" style="width:100%;height:80px;font-size:0.68rem;font-family:monospace;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:0.5rem;margin-bottom:0.5rem"></textarea>
+          <button class="btn btn-outline" onclick="importDataFromPaste()" style="width:100%;margin-bottom:0.5rem">Restore from pasted text</button>
           <div id="import-status" style="font-size:0.8rem;color:var(--muted);text-align:center"></div>
         </div>
 
@@ -9947,81 +9950,131 @@ function renderDataSummary(targetId, detailed) {
 }
 
 // ── EXPORT ──
+function _copyBackupBox(btn){
+  try{
+    var t=btn.previousElementSibling;
+    if(t && t.select){ t.select(); try{ document.execCommand('copy'); }catch(e){} }
+    if(navigator.clipboard && t){ navigator.clipboard.writeText(t.value); }
+    btn.textContent='\u2705 Copied!';
+  }catch(e){}
+}
 function exportData() {
-  const snapshot = {
-    _version: '1.0',
-    _exported: new Date().toISOString(),
-    _app: 'Trinity Fitness',
-    profile: JSON.parse(localStorage.getItem('ffp_profile') || '{}'),
-    maxes: JSON.parse(localStorage.getItem('ffp_maxes') || '{}'),
-    pantry: JSON.parse(localStorage.getItem('ffp_pantry') || '[]'),
-    allergies: JSON.parse(localStorage.getItem('ffp_allergies') || '[]'),
-    has_allergies: JSON.parse(localStorage.getItem('ffp_has_allergies') || 'false'),
-    custom_allergy: localStorage.getItem('ffp_custom_allergy') || '',
-    allergy_meal_only: JSON.parse(localStorage.getItem('ffp_allergy_meal_only') || 'false'),
-    wants_plyo: JSON.parse(localStorage.getItem('ffp_wants_plyo') || 'true'),
-    wants_speed: JSON.parse(localStorage.getItem('ffp_wants_speed') || 'true'),
-    comp_months: JSON.parse(localStorage.getItem('ffp_comp_months') || '[]'),
-    wants_comp_sched: JSON.parse(localStorage.getItem('ffp_wants_comp_sched') || 'false'),
-    comp_sport_season: localStorage.getItem('ffp_comp_sport_season') || '',
-    periodization: JSON.parse(localStorage.getItem('ffp_periodization') || 'null'),
-    trial_start: localStorage.getItem('ffp_trial_start'),
-    coach_history: JSON.parse(localStorage.getItem('ffp_coach_history') || '[]'),
-  };
+  // Capture EVERY app key (ffp_*) so nothing is missed — completed workouts,
+  // set checks, per-lift data, progression, recovery, maxes, profile, etc.
+  var snapshot = { _version:'2.0', _exported:new Date().toISOString(), _app:'Milton\'s Brain', data:{} };
+  try{
+    for(var i=0;i<localStorage.length;i++){
+      var key=localStorage.key(i);
+      if(key && key.indexOf('ffp_')===0){ snapshot.data[key]=localStorage.getItem(key); }
+    }
+  }catch(e){}
+  var json=JSON.stringify(snapshot, null, 2);
+  var nm=(function(){ try{ return (JSON.parse(localStorage.getItem('ffp_profile')||'{}').name||'user').replace(/\\s+/g,'-'); }catch(e){ return 'user'; } })();
+  var fname='miltons-brain-backup-'+nm+'-'+new Date().toISOString().slice(0,10)+'.json';
 
-  const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const name = snapshot.profile.name ? snapshot.profile.name.replace(/\s+/g,'-') : 'user';
-  const date = new Date().toISOString().slice(0,10);
-  a.href = url;
-  a.download = `miltons-brain-backup-${name}-${date}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
+  // 1) Try native share of the backup file (best on mobile — save to Files / send it).
+  try{
+    if(navigator.share && navigator.canShare){
+      var f=new File([json], fname, {type:'application/json'});
+      if(navigator.canShare({files:[f]})){
+        navigator.share({files:[f], title:'Milton\'s Brain Backup'}).catch(function(){});
+        var st0=document.getElementById('import-status');
+        if(st0){ st0.style.color='var(--green)'; st0.textContent='\u2705 Backup ready — save it to Files or send it to yourself.'; }
+        return;
+      }
+    }
+  }catch(e){}
 
-  // Show success flash
-  const status = document.getElementById('import-status');
-  if (status) { status.style.color = 'var(--green)'; status.textContent = '✅ Backup downloaded successfully!'; }
+  // 2) Try a real download (works on desktop). Keep the blob alive long enough.
+  var downloaded=false;
+  try{
+    var blob=new Blob([json], {type:'application/json'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a'); a.href=url; a.download=fname;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 10000); // don't revoke immediately!
+    downloaded=true;
+  }catch(e){}
+
+  // 3) ALWAYS show the backup text in a copyable box too — this works on every
+  //    device, so the button never silently "does nothing" again.
+  try{
+    var old=document.getElementById('backup-copy-box'); if(old) old.remove();
+    var host=document.getElementById('import-status');
+    var box=document.createElement('div'); box.id='backup-copy-box';
+    box.style.cssText='margin-top:0.75rem';
+    box.innerHTML=
+      '<div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.4rem">'
+      + (downloaded ? 'Downloaded. ' : '')
+      + 'Or copy your backup and paste it somewhere safe (Notes, email to yourself):</div>'
+      + '<textarea readonly style="width:100%;height:120px;font-size:0.68rem;font-family:monospace;'
+      + 'background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;'
+      + 'padding:0.5rem;white-space:pre;overflow:auto"></textarea>'
+      + '<button onclick="_copyBackupBox(this)" class="btn" style="width:100%;margin-top:0.5rem">\ud83d\udccb Copy backup</button>';
+    if(host && host.parentNode){ host.parentNode.insertBefore(box, host.nextSibling); }
+    else { document.body.appendChild(box); }
+    box.querySelector('textarea').value=json;
+    if(host){ host.style.color='var(--green)'; host.textContent='\u2705 Backup ready below.'; }
+  }catch(e){
+    var st=document.getElementById('import-status');
+    if(st){ st.style.color='var(--green)'; st.textContent='\u2705 Backup ready.'; }
+  }
 }
 
 // ── IMPORT ──
 function importData(input) {
-  const file = input.files[0];
+  var file = input && input.files ? input.files[0] : null;
   if (!file) return;
-  const status = document.getElementById('import-status');
-
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      const data = JSON.parse(e.target.result);
-      if (data._app !== 'Trinity Fitness') throw new Error('Not a FitForge backup file.');
-
-      // Restore all keys
-      if (data.profile) localStorage.setItem('ffp_profile', JSON.stringify(data.profile));
-      if (data.maxes) localStorage.setItem('ffp_maxes', JSON.stringify(data.maxes));
-      if (data.pantry) localStorage.setItem('ffp_pantry', JSON.stringify(data.pantry));
-      if (data.allergies) localStorage.setItem('ffp_allergies', JSON.stringify(data.allergies));
-      if (data.has_allergies !== undefined) localStorage.setItem('ffp_has_allergies', JSON.stringify(data.has_allergies));
-      if (data.custom_allergy !== undefined) localStorage.setItem('ffp_custom_allergy', data.custom_allergy);
-      if (data.allergy_meal_only !== undefined) localStorage.setItem('ffp_allergy_meal_only', JSON.stringify(data.allergy_meal_only));
-      if (data.wants_plyo !== undefined) localStorage.setItem('ffp_wants_plyo', JSON.stringify(data.wants_plyo));
-      if (data.wants_speed !== undefined) localStorage.setItem('ffp_wants_speed', JSON.stringify(data.wants_speed));
-      if (data.comp_months) localStorage.setItem('ffp_comp_months', JSON.stringify(data.comp_months));
-      if (data.wants_comp_sched !== undefined) localStorage.setItem('ffp_wants_comp_sched', JSON.stringify(data.wants_comp_sched));
-      if (data.comp_sport_season !== undefined) localStorage.setItem('ffp_comp_sport_season', data.comp_sport_season);
-      if (data.periodization !== undefined) localStorage.setItem('ffp_periodization', JSON.stringify(data.periodization));
-      if (data.trial_start) localStorage.setItem('ffp_trial_start', data.trial_start);
-      if (data.coach_history) localStorage.setItem('ffp_coach_history', JSON.stringify(data.coach_history));
-
-      status.style.color = 'var(--green)';
-      status.textContent = `✅ Backup restored from ${data._exported ? new Date(data._exported).toLocaleDateString() : 'unknown date'}. Reloading…`;
-      setTimeout(() => location.reload(), 1500);
-    } catch(err) {
-      status.style.color = '#ff5252';
-      status.textContent = `❌ Error: ${err.message}`;
-    }
-  };
+  var reader = new FileReader();
+  reader.onload = function(e){ _applyBackupText(e.target.result); };
   reader.readAsText(file);
+}
+// Shared restore logic — handles BOTH the new v2 format ({data:{...all keys...}})
+// and the old v1 format (hand-picked keys). Accepts raw JSON text, so it works
+// from a file upload OR a paste box (mobile-friendly).
+function _applyBackupText(text){
+  var status = document.getElementById('import-status');
+  try{
+    var data = JSON.parse(text);
+    var n = 0;
+    if (data && data.data && typeof data.data === 'object') {
+      // v2: restore every saved key verbatim.
+      for (var key in data.data){
+        if (Object.prototype.hasOwnProperty.call(data.data,key) && key.indexOf('ffp_')===0){
+          localStorage.setItem(key, data.data[key]); n++;
+        }
+      }
+    } else if (data && (data._app==='Trinity Fitness' || data._app==="Milton's Brain" || data.profile || data.maxes)) {
+      // v1 legacy: map the old named fields back to their keys.
+      var map = {
+        profile:'ffp_profile', maxes:'ffp_maxes', pantry:'ffp_pantry', allergies:'ffp_allergies',
+        has_allergies:'ffp_has_allergies', custom_allergy:'ffp_custom_allergy',
+        allergy_meal_only:'ffp_allergy_meal_only', wants_plyo:'ffp_wants_plyo',
+        wants_speed:'ffp_wants_speed', comp_months:'ffp_comp_months',
+        wants_comp_sched:'ffp_wants_comp_sched', comp_sport_season:'ffp_comp_sport_season',
+        periodization:'ffp_periodization', trial_start:'ffp_trial_start', coach_history:'ffp_coach_history'
+      };
+      for (var f in map){
+        if (data[f] !== undefined && data[f] !== null){
+          var v = (typeof data[f]==='string') ? data[f] : JSON.stringify(data[f]);
+          localStorage.setItem(map[f], v); n++;
+        }
+      }
+    } else {
+      throw new Error('Not a Milton\'s Brain backup.');
+    }
+    if (status){ status.style.color='var(--green)'; status.textContent='\u2705 Restored '+n+' items. Reloading…'; }
+    setTimeout(function(){ location.reload(); }, 900);
+  }catch(err){
+    if (status){ status.style.color='var(--danger,#c0392b)'; status.textContent='\u274c Couldn\'t read that backup. Make sure you pasted the whole thing.'; }
+  }
+}
+// Paste-to-restore: reads the text from the paste box (for mobile, where file
+// upload is awkward). Call from a "Restore from pasted text" button.
+function importDataFromPaste(){
+  var el=document.getElementById('restore-paste-box');
+  if(el && el.value && el.value.trim()){ _applyBackupText(el.value.trim()); }
+  else { var s=document.getElementById('import-status'); if(s){ s.style.color='var(--muted)'; s.textContent='Paste your backup text first.'; } }
 }
 
 // ── DELETE ALL ──

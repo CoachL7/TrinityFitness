@@ -5547,22 +5547,32 @@ function isJumpCourtAthlete(){
     return _JUMP_COURT_SPORTS.some(function(s){ return sport.indexOf(s)>=0; });
   }catch(e){ return false; }
 }
+// SINGLE SOURCE OF TRUTH for resolving a workout section into its displayed exercise
+// name + equipment. All render paths (screen, share-text, share-image) call this, so
+// the rules \u2014 manual overrides, equipment adaptation, and the power-phase variant
+// swap \u2014 live in ONE place and can never drift between views again.
+function resolveExerciseForDisplay(s, wo){
+  var woId = wo ? wo.id : null;
+  var origLift = s.lift||s.exercise||s.head||'';
+  var override = (typeof getActiveExercise==='function') ? getActiveExercise(woId, s.head, origLift) : null;
+  var equipOverride = (typeof getActiveEquipment==='function') ? getActiveEquipment(woId, s.head, origLift, null) : null;
+  var adapted = {equipment:s.equipment, exercise:s.exercise||s.lift, swapped:false};
+  if(typeof adaptSectionToEquipment==='function' && !equipOverride && !override){ adapted = adaptSectionToEquipment(s); }
+  var ex = override || adapted.exercise || s.exercise || s.lift || s.head || '';
+  if(typeof powerVariant==='function') ex = powerVariant(ex); // power-phase variant swap
+  var curEquip = equipOverride || adapted.equipment || s.equipment || '';
+  return { ex:ex, curEquip:curEquip, origLift:origLift, override:override, equipOverride:equipOverride, adapted:adapted };
+}
+
 function powerVariant(exName){
   try{
     if(!exName) return exName;
     var phase = (typeof currentPhase!=='undefined') ? currentPhase : null;
     try{ if(phase!=='power' && typeof deriveTrainingMode==='function'){ var d=deriveTrainingMode(); if(d) phase=d; } }catch(e){}
     try{ var mo=localStorage.getItem('ffp_mode_override'); if(mo) phase=mo; }catch(e){}
-    // TEMP DIAGNOSTIC: only tag lifts that HAVE a power variant, so we can see the decision.
-    var hasVar = _POWER_VARIANTS_FLOOR[exName] || _POWER_VARIANTS_HANG[exName];
-    if(hasVar){
-      var jump = isJumpCourtAthlete();
-      if(phase==='power'){
-        var map = jump ? _POWER_VARIANTS_HANG : _POWER_VARIANTS_FLOOR;
-        if(map[exName]) return map[exName];
-      }
-      // Not swapped — show WHY, right in the name, so we can diagnose on-screen.
-      return exName + ' [dx: phase=' + (phase||'none') + ', jump=' + jump + ']';
+    if(phase==='power'){
+      var map = isJumpCourtAthlete() ? _POWER_VARIANTS_HANG : _POWER_VARIANTS_FLOOR;
+      if(map[exName]) return map[exName];
     }
   }catch(e){}
   return exName;
@@ -17251,15 +17261,10 @@ function _workoutToText(wo, woNum){
   // Gather rows grouped by section head.
   const groups={}; const order=[];
   (wo.sections||[]).forEach((s)=>{
-    const origLift=s.lift||s.exercise||s.head||'';
-    const override=(typeof getActiveExercise==='function')?getActiveExercise(wo.id,s.head,origLift):null;
-    const equipOverride=(typeof getActiveEquipment==='function')?getActiveEquipment(wo.id,s.head,origLift,null):null;
-    let adapted={equipment:s.equipment,exercise:s.exercise||s.lift,swapped:false};
-    if(typeof adaptSectionToEquipment==='function' && !equipOverride && !override){ adapted=adaptSectionToEquipment(s); }
-    let ex=override||adapted.exercise||s.exercise||s.lift||s.head||'';
-    // In the power phase, prescribe the explosive/power variant (e.g. Clean \u2192 Power Clean).
-    if(typeof powerVariant==='function') ex=powerVariant(ex);
-    const curEquip=equipOverride||adapted.equipment||s.equipment||'';
+    const _r=resolveExerciseForDisplay(s, wo);
+    const origLift=_r.origLift, override=_r.override, equipOverride=_r.equipOverride, adapted=_r.adapted;
+    let ex=_r.ex;
+    const curEquip=_r.curEquip;
     const _nonLoaded=/band|bodyweight|box|cone|ladder|parachute|hill|hurdle|rope|jump rope|wall ball|rower|bike|erg|climbing|ghd|ring/i.test(curEquip||'');
     const isWeighted=!_nonLoaded && weightedEquip.some(eq=>(curEquip||'').startsWith(eq));
     let presc='';
@@ -17340,13 +17345,10 @@ function _workoutToImage(wo, woNum){
     var rows=[]; // {ex, tag, equip, presc}
     var weightedEquip=['BB','DB','KB','Cable','Machine','Smith Machine','EZ Curl Bar','Trap/Specialty Bar','Hex Bar'];
     (wo.sections||[]).forEach(function(s){
-      var origLift=s.lift||s.exercise||s.head||'';
-      var override=(typeof getActiveExercise==='function')?getActiveExercise(wo.id,s.head,origLift):null;
-      var equipOverride=(typeof getActiveEquipment==='function')?getActiveEquipment(wo.id,s.head,origLift,null):null;
-      var adapted={equipment:s.equipment,exercise:s.exercise||s.lift,swapped:false};
-      if(typeof adaptSectionToEquipment==='function' && !equipOverride && !override){ adapted=adaptSectionToEquipment(s); }
-      var ex=override||adapted.exercise||s.exercise||s.lift||s.head||'';
-      var curEquip=equipOverride||adapted.equipment||s.equipment||'';
+      var _r=resolveExerciseForDisplay(s, wo);
+      var origLift=_r.origLift, override=_r.override, equipOverride=_r.equipOverride, adapted=_r.adapted;
+      var ex=_r.ex;
+      var curEquip=_r.curEquip;
       var isWeighted=weightedEquip.some(function(eq){return (curEquip||'').startsWith(eq);});
       var presc='';
       try{
@@ -17742,16 +17744,10 @@ function renderWorkoutDetail(wo,container,opts){
   const woNum=wo.num||(WORKOUT_STRUCTURE.indexOf(wo)+1);
   const weightedEquip=['BB','DB','KB','Cable','Machine','Smith Machine','EZ Curl Bar','Trap/Specialty Bar','Hex Bar'];
   const sectionsHTML=(wo.sections||[]).map((s,si)=>{
-    const origLift=s.lift||s.exercise||s.head||'';
-    const override=(typeof getActiveExercise==='function') ? getActiveExercise(wo.id,s.head,origLift) : null;
-    const equipOverride=(typeof getActiveEquipment==='function') ? getActiveEquipment(wo.id,s.head,origLift,null) : null;
-    // Auto-adapt to the user's available equipment (unless they manually set this slot)
-    let adapted = {equipment:s.equipment, exercise:s.exercise||s.lift, swapped:false};
-    if(typeof adaptSectionToEquipment==='function' && !equipOverride && !override){
-      adapted = adaptSectionToEquipment(s);
-    }
-    const ex=override || adapted.exercise || s.exercise || s.lift || s.head || '';
-    const curEquip=equipOverride || adapted.equipment || s.equipment || '';
+    const _r=resolveExerciseForDisplay(s, wo);
+    const origLift=_r.origLift, override=_r.override, equipOverride=_r.equipOverride, adapted=_r.adapted;
+    let ex=_r.ex;
+    const curEquip=_r.curEquip;
     const origEquipRaw=s.equipment||'';
     const nameSwapped=!!(override && override!==origLift) || (adapted.swapped && adapted.exercise && adapted.exercise!==origLift);
     const equipSwappedOnly=!nameSwapped && adapted.swapped && curEquip && origEquipRaw && curEquip!==origEquipRaw;

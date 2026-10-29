@@ -5518,6 +5518,56 @@ function bodyweightSubFor(exerciseName, head){
 // RULE: Bodyweight is only ever a default for calisthenics & yoga styles. For every other
 // style, a weighted exercise keeps weighted equipment (BB/DB/KB) — it never drops to
 // bodyweight automatically. Exercises that are inherently bodyweight stay bodyweight.
+// POWER-PHASE LIFT VARIANTS. When the athlete is training in the POWER mode, a lift
+// that has an explosive/power version should be prescribed as that version \u2014 power
+// means fast, sub-maximal, catching high (NOT a full-depth catch). So a \u2018Clean\u2019 in a
+// power block becomes a \u2018Power Clean\u2019, a \u2018Snatch\u2019 a \u2018Power Snatch,\u2019 etc. Only applies
+// in the power phase; every other phase keeps the full-ROM lift.
+// Two variant maps for the power phase. The FLOOR variant is the default power
+// lift (pulled from the floor). The HANG variant starts above the knee \u2014 more
+// vertical/jump-specific (triple extension), lower skill & fatigue, and it transfers
+// best to JUMP/COURT sports (volleyball, basketball). So the choice of hang vs. floor
+// is driven by the athlete\u2019s SPORT, not just the phase.
+var _POWER_VARIANTS_FLOOR = {
+  'Clean':'Power Clean', 'Hang Clean':'Hang Power Clean', 'Squat Clean':'Power Clean', 'Clean (Full)':'Power Clean',
+  'Snatch':'Power Snatch', 'Hang Snatch':'Hang Power Snatch', 'Squat Snatch':'Power Snatch',
+  'Clean and Jerk':'Power Clean & Push Jerk', 'Clean & Jerk':'Power Clean & Push Jerk', 'Jerk':'Push Jerk'
+};
+var _POWER_VARIANTS_HANG = {
+  'Clean':'Hang Power Clean', 'Hang Clean':'Hang Power Clean', 'Squat Clean':'Hang Power Clean', 'Clean (Full)':'Hang Power Clean',
+  'Power Clean':'Hang Power Clean',
+  'Snatch':'Hang Power Snatch', 'Hang Snatch':'Hang Power Snatch', 'Squat Snatch':'Hang Power Snatch', 'Power Snatch':'Hang Power Snatch',
+  'Clean and Jerk':'Hang Power Clean & Push Jerk', 'Clean & Jerk':'Hang Power Clean & Push Jerk', 'Jerk':'Push Jerk'
+};
+// Jump/court sports whose vertical power transfers best from the HANG position.
+var _JUMP_COURT_SPORTS = ['volleyball','basketball','high jump','long jump','triple jump','jumps','netball','handball'];
+function isJumpCourtAthlete(){
+  try{
+    var sport=((profile.competitiveSport||profile.recreationalSport||'')+'').toLowerCase();
+    return _JUMP_COURT_SPORTS.some(function(s){ return sport.indexOf(s)>=0; });
+  }catch(e){ return false; }
+}
+function powerVariant(exName){
+  try{
+    if(!exName) return exName;
+    var phase = (typeof currentPhase!=='undefined') ? currentPhase : null;
+    try{ if(phase!=='power' && typeof deriveTrainingMode==='function'){ var d=deriveTrainingMode(); if(d) phase=d; } }catch(e){}
+    try{ var mo=localStorage.getItem('ffp_mode_override'); if(mo) phase=mo; }catch(e){}
+    // TEMP DIAGNOSTIC: only tag lifts that HAVE a power variant, so we can see the decision.
+    var hasVar = _POWER_VARIANTS_FLOOR[exName] || _POWER_VARIANTS_HANG[exName];
+    if(hasVar){
+      var jump = isJumpCourtAthlete();
+      if(phase==='power'){
+        var map = jump ? _POWER_VARIANTS_HANG : _POWER_VARIANTS_FLOOR;
+        if(map[exName]) return map[exName];
+      }
+      // Not swapped — show WHY, right in the name, so we can diagnose on-screen.
+      return exName + ' [dx: phase=' + (phase||'none') + ', jump=' + jump + ']';
+    }
+  }catch(e){}
+  return exName;
+}
+
 function adaptSectionToEquipment(s){
   const origEquip = s.equipment || '';
   const origEx = s.exercise || s.lift;
@@ -6261,23 +6311,93 @@ function getSessionIndexForDate(date){
 }
 
 function getWorkoutForDate(date){
+  const prog=getActiveProgram();
+  // For TODAY, advancement is completion-driven (missed days don't skip workouts).
+  if(typeof _isToday==='function' && _isToday(date) && typeof getTodaysWorkoutIndex==='function'){
+    const ti=getTodaysWorkoutIndex();
+    if(ti===null) return null;
+    return prog[((ti%prog.length)+prog.length)%prog.length];
+  }
   const idx=getSessionIndexForDate(date);
   if(idx===null)return null;
-  const prog=getActiveProgram();
   const i=((idx%prog.length)+prog.length)%prog.length;
   return prog[i];
 }
+function _isToday(date){
+  try{ const n=new Date(); return date.getFullYear()===n.getFullYear() && date.getMonth()===n.getMonth() && date.getDate()===n.getDate(); }catch(e){ return false; }
+}
 function getWorkoutNumberForDate(date){
+  const prog=getActiveProgram();
+  if(typeof _isToday==='function' && _isToday(date) && typeof getTodaysWorkoutIndex==='function'){
+    const ti=getTodaysWorkoutIndex();
+    if(ti===null) return null;
+    return (((ti%prog.length)+prog.length)%prog.length)+1;
+  }
   const idx=getSessionIndexForDate(date);
   if(idx===null)return null;
-  const prog=getActiveProgram();
   const i=((idx%prog.length)+prog.length)%prog.length;
   return i+1;
 }
+// How many workouts have been completed in the CURRENT cycle (since the last full
+// reset of the program's workout set). Drives completion-based advancement.
+// Explicit cycle position = how many workouts completed in the current cycle.
+// Stored as a single number ('ffp_cycle_pos'), independent of the completion-log
+// record format (which has varied historically). This is the source of truth for
+// "what's today's workout." Incremented once per completed workout; wraps at len.
+function getCyclePos(){
+  try{ const v=parseInt(localStorage.getItem('ffp_cycle_pos'),10); return isNaN(v)?null:v; }catch(e){ return null; }
+}
+function setCyclePos(n){
+  try{ const prog=getActiveProgram(); const len=(prog&&prog.length)?prog.length:12;
+       localStorage.setItem('ffp_cycle_pos', String(((n%len)+len)%len)); }catch(e){}
+}
+// Advance the cycle by one completed workout (call from completeWorkout).
+function advanceCyclePos(){
+  try{ const cur=getCyclePos(); setCyclePos((cur==null?0:cur)+1); }catch(e){}
+}
+// Position in the current cycle (0-based index of the NEXT uncompleted workout).
+// Seeds itself from the completion log ONCE if never set, so existing users don't
+// reset to W1 on first load after this update.
+function completedInCurrentCycle(){
+  try{
+    const prog=getActiveProgram(); const len=(prog&&prog.length)?prog.length:12;
+    let pos=getCyclePos();
+    if(pos==null){
+      // One-time seed from history: count completions (any recognizable format),
+      // so an existing user lands on their correct next workout, not W1.
+      const completed=JSON.parse(localStorage.getItem('ffp_completed_workouts')||'[]');
+      let maxN=0, count=0;
+      completed.forEach(function(c){
+        if(!c) return; count++;
+        const id=String(c.id||'');
+        const m=id.match(/(\d+)/); if(m){ const n=parseInt(m[1],10); if(n>maxN) maxN=n; }
+      });
+      // Prefer the highest workout number seen (robust to order); fall back to count.
+      let seed = maxN>0 ? maxN : count;
+      pos = seed % len;
+      setCyclePos(pos);
+    }
+    return ((pos%len)+len)%len;
+  }catch(e){ return 0; }
+}
+// Today's workout = the NEXT UNCOMPLETED workout in the cycle. Purely completion-
+// driven: if the athlete misses scheduled days, the next workout WAITS for them
+// rather than the calendar skipping ahead. Finish W6 Tuesday, miss Thu/Sat, and
+// the next time they train (even next Tuesday) it's still W7.
 function getTodaysWorkoutIndex(){
-  const idx=getSessionIndexForDate(new Date());
-  const prog=getActiveProgram();
-  return idx!==null?(((idx%prog.length)+prog.length)%prog.length):null;
+  try{
+    const prog=getActiveProgram(); if(!prog||!prog.length) return null;
+    // Only show a workout on scheduled workout days (rest days stay rest).
+    const sched=(typeof getUserSchedule==='function')?getUserSchedule():null;
+    if(sched){ const dow=new Date().getDay(); if((sched[dow]||'rest')!=='workout') return null; }
+    // The next uncompleted workout's 0-based index = completions in this cycle.
+    return completedInCurrentCycle() % prog.length;
+  }catch(e){
+    // Fallback to the old date-based behavior if anything goes wrong.
+    const idx=getSessionIndexForDate(new Date());
+    const prog=getActiveProgram();
+    return idx!==null?(((idx%prog.length)+prog.length)%prog.length):null;
+  }
 }
 
 
@@ -7022,6 +7142,28 @@ function getAthleteType(){
   if(POWER_STRENGTH_SPORTS.some(s=>sport.includes(s))) return 'power';
   return 'endurance'; // default: most athletes need the ME base
 }
+
+// Sports where the BARBELL LIFT ITSELF is contested — peaking means peaking the
+// lift. For these, the taper sharpens the lift toward a maximal competition day.
+const LIFT_IS_SPORT=['powerlifting','weightlifting','olympic weightlifting','powerlifter','strongman'];
+// Classify how the lifting relates to the athlete's competition. This drives how
+// aggressively to taper the WEIGHT ROOM near a meet/game/race:
+//   'lift-sport'   → the lift is the sport → peak the lift (small taper, heavy).
+//   'power-support'→ speed/power sport (sprint, jump, throw, court/field) → the
+//                    gym supports the sport; near competition, SLASH volume & load
+//                    so the athlete is fresh and explosive for the actual event.
+//   'endurance-support' → endurance sport; maintain a little intensity, drop volume.
+//   'general'      → no competition sport; normal deload behavior.
+function sportLiftRole(){
+  try{
+    var sport=((profile.competitiveSport||profile.recreationalSport||'')+'').toLowerCase();
+    if(!sport) return 'general';
+    if(LIFT_IS_SPORT.some(function(s){ return sport.indexOf(s)>=0; })) return 'lift-sport';
+    if(getAthleteType()==='endurance') return 'endurance-support';
+    // power/speed/team sports whose lifting is supportive, not contested
+    return 'power-support';
+  }catch(e){ return 'general'; }
+}
 function setAthleteType(t){ try{ localStorage.setItem('ffp_athlete_type', t||''); }catch(e){} if(typeof annualPlan!=='undefined') annualPlan=null; }
 
 // Given today, return the season-driven phase key, or null if no seasons configured.
@@ -7334,9 +7476,14 @@ function hasEquip(equipList) {
 }
 
 function getExerciseName(section) {
-  if (!section.equipment) return section.lift;
-  if (hasEquip(section.equipment)) return section.lift;
-  return section.bw || section.lift + ' (Bodyweight)';
+  var nm;
+  if (!section.equipment) nm = section.lift;
+  else if (hasEquip(section.equipment)) nm = section.lift;
+  else nm = section.bw || section.lift + ' (Bodyweight)';
+  // Power-phase variant swap (Clean → Power/Hang Power Clean), applied centrally
+  // so EVERY render path that uses getExerciseName gets it.
+  try{ if(typeof powerVariant==='function') nm = powerVariant(nm); }catch(e){}
+  return nm;
 }
 
 // ── Estimate a SAFE starting 1RM before the user has tested a max ──
@@ -7357,7 +7504,7 @@ function estimateMax(lift, curEquip){
   // it's useless, not so heavy it risks injury. Experience scales up from here.
   const baseMult = {
     // ── Lower body — compound (× bodyweight, untrained male) ──
-    'Back Squat':0.75, 'Front Squat':0.60, 'Split Squat':0.35, 'SL Squat':0.30, 'Pistol Squat':0.30,
+    'Back Squat':0.75, 'Front Squat':0.60, 'Split Squat':0.35, 'SL Squat':0.45, 'Pistol Squat':0.30,
     'Linear Lunge':0.35, 'Deadlift':1.00, 'Stiff Leg Deadlift (SLDL)':0.75, 'SL RDL':0.35,
     'Good Morning':0.45, 'Hip Thruster':1.00, 'Hip Extension':0.40, 'Back Extension':0.35,
     // ── Lower body — accessory / machine (per limb where single) ──
@@ -7675,8 +7822,11 @@ function renderTrainingPhase(container, phase){
     }
     renderRecoveryDay(container,prevWo);return;
   }
-  // Workout day
-  const sessIdx=getSessionIndexForDate(now);
+  // Workout day — use the COMPLETION-DRIVEN index so today's workout is always the
+  // next uncompleted one (missed days don't skip ahead), and so it MATCHES what the
+  // home screen shows and links to.
+  let sessIdx = (typeof getTodaysWorkoutIndex==='function') ? getTodaysWorkoutIndex() : null;
+  if(sessIdx===null){ sessIdx = getSessionIndexForDate(now); }
   if(sessIdx===null){
     // Schedule says workout but index couldn't resolve — show the first workout as a safe fallback
     const prog=getActiveProgram();
@@ -9959,9 +10109,8 @@ function _copyBackupBox(btn){
   }catch(e){}
 }
 function exportData() {
-  // Capture EVERY app key (ffp_*) so nothing is missed — completed workouts,
-  // set checks, per-lift data, progression, recovery, maxes, profile, etc.
-  var snapshot = { _version:'2.0', _exported:new Date().toISOString(), _app:'Milton\'s Brain', data:{} };
+  // Capture EVERY app key (ffp_*) so nothing is missed.
+  var snapshot = { _version:'2.0', _exported:new Date().toISOString(), _app:'Miltons Brain', data:{} };
   try{
     for(var i=0;i<localStorage.length;i++){
       var key=localStorage.key(i);
@@ -9969,56 +10118,60 @@ function exportData() {
     }
   }catch(e){}
   var json=JSON.stringify(snapshot, null, 2);
-  var nm=(function(){ try{ return (JSON.parse(localStorage.getItem('ffp_profile')||'{}').name||'user').replace(/\\s+/g,'-'); }catch(e){ return 'user'; } })();
+  var nm=(function(){ try{ return (JSON.parse(localStorage.getItem('ffp_profile')||'{}').name||'user').replace(/\s+/g,'-'); }catch(e){ return 'user'; } })();
   var fname='miltons-brain-backup-'+nm+'-'+new Date().toISOString().slice(0,10)+'.json';
+  window._backupJson=json; window._backupFname=fname;
 
-  // 1) Try native share of the backup file (best on mobile — save to Files / send it).
-  try{
-    if(navigator.share && navigator.canShare){
-      var f=new File([json], fname, {type:'application/json'});
-      if(navigator.canShare({files:[f]})){
-        navigator.share({files:[f], title:'Milton\'s Brain Backup'}).catch(function(){});
-        var st0=document.getElementById('import-status');
-        if(st0){ st0.style.color='var(--green)'; st0.textContent='\u2705 Backup ready — save it to Files or send it to yourself.'; }
-        return;
-      }
-    }
-  }catch(e){}
-
-  // 2) Try a real download (works on desktop). Keep the blob alive long enough.
-  var downloaded=false;
-  try{
-    var blob=new Blob([json], {type:'application/json'});
-    var url=URL.createObjectURL(blob);
-    var a=document.createElement('a'); a.href=url; a.download=fname;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function(){ URL.revokeObjectURL(url); }, 10000); // don't revoke immediately!
-    downloaded=true;
-  }catch(e){}
-
-  // 3) ALWAYS show the backup text in a copyable box too — this works on every
-  //    device, so the button never silently "does nothing" again.
+  // ALWAYS show the backup box with copy + (optional) share/download buttons.
+  // We do NOT gate on native share — on mobile that can open a sheet and then
+  // silently do nothing, which is exactly the bug we are fixing. Copy always works.
   try{
     var old=document.getElementById('backup-copy-box'); if(old) old.remove();
     var host=document.getElementById('import-status');
     var box=document.createElement('div'); box.id='backup-copy-box';
-    box.style.cssText='margin-top:0.75rem';
+    box.style.cssText='margin-top:0.75rem;text-align:left';
     box.innerHTML=
-      '<div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.4rem">'
-      + (downloaded ? 'Downloaded. ' : '')
-      + 'Or copy your backup and paste it somewhere safe (Notes, email to yourself):</div>'
-      + '<textarea readonly style="width:100%;height:120px;font-size:0.68rem;font-family:monospace;'
+      '<div style="font-size:0.74rem;color:var(--text);font-weight:700;margin-bottom:0.4rem">\u2705 Your backup is ready.</div>'
+      + '<div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.5rem">Tap <b>Copy backup</b>, then paste it into Notes or email it to yourself. That text IS your full backup.</div>'
+      + '<textarea id="backup-textarea" readonly style="width:100%;height:110px;font-size:0.66rem;font-family:monospace;'
       + 'background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;'
-      + 'padding:0.5rem;white-space:pre;overflow:auto"></textarea>'
-      + '<button onclick="_copyBackupBox(this)" class="btn" style="width:100%;margin-top:0.5rem">\ud83d\udccb Copy backup</button>';
+      + 'padding:0.5rem;white-space:pre;overflow:auto;-webkit-user-select:text;user-select:text"></textarea>'
+      + '<button onclick="_copyBackupBox(this)" class="btn" style="width:100%;margin-top:0.5rem">\ud83d\udccb Copy backup</button>'
+      + '<button onclick="_shareBackup()" class="btn btn-outline" style="width:100%;margin-top:0.4rem">\ud83d\udce4 Share / save to Files</button>';
     if(host && host.parentNode){ host.parentNode.insertBefore(box, host.nextSibling); }
     else { document.body.appendChild(box); }
-    box.querySelector('textarea').value=json;
-    if(host){ host.style.color='var(--green)'; host.textContent='\u2705 Backup ready below.'; }
+    document.getElementById('backup-textarea').value=json;
+    if(host){ host.textContent=''; }
+    // scroll it into view so the user sees it appear
+    box.scrollIntoView({behavior:'smooth', block:'center'});
   }catch(e){
     var st=document.getElementById('import-status');
-    if(st){ st.style.color='var(--green)'; st.textContent='\u2705 Backup ready.'; }
+    if(st){ st.style.color='var(--green)'; st.textContent='\u2705 Backup ready (copy it from here): '+json.slice(0,40)+'…'; }
   }
+}
+// Optional native share / download — only runs when the user taps the button,
+// which is a real user gesture (mobile honors that), and never blocks the copy box.
+function _shareBackup(){
+  var json=window._backupJson||'', fname=window._backupFname||'backup.json';
+  try{
+    if(navigator.share){
+      var f=new File([json],fname,{type:'application/json'});
+      if(navigator.canShare && navigator.canShare({files:[f]})){
+        navigator.share({files:[f], title:'Milton Backup'}).catch(function(){});
+        return;
+      }
+      navigator.share({title:'Milton Backup', text:json}).catch(function(){});
+      return;
+    }
+  }catch(e){}
+  // desktop fallback: download
+  try{
+    var blob=new Blob([json],{type:'application/json'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a'); a.href=url; a.download=fname;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); },10000);
+  }catch(e2){}
 }
 
 // ── IMPORT ──
@@ -12941,15 +13094,19 @@ function closeSwapModal() {
 // Override getExerciseName to respect custom swaps
 const _origGetExerciseName = getExerciseName;
 function getExerciseName(section, workoutId) {
-  // Check for custom override first
+  // Check for custom override first (a coach's manual swap always wins)
   if (workoutId && section.head) {
     const key = `${workoutId}:${section.head}:${section.lift}`;
     if (customExercises[key]) return customExercises[key];
   }
-  // Fall back to original logic
-  if (!section.equipment) return section.lift;
-  if (hasEquip(section.equipment)) return section.lift;
-  return section.bw || section.lift + ' (Bodyweight)';
+  // Base name
+  var nm;
+  if (!section.equipment) nm = section.lift;
+  else if (hasEquip(section.equipment)) nm = section.lift;
+  else nm = section.bw || section.lift + ' (Bodyweight)';
+  // Power-phase variant swap (Clean → Power/Hang Power Clean by phase + sport).
+  try{ if(typeof powerVariant==='function') nm = powerVariant(nm); }catch(e){}
+  return nm;
 }
 
 // ==============================
@@ -12961,6 +13118,57 @@ const MUSCLE_GROUPS = [
   'Forearms','Glutes','Quads','Hamstrings',
   'Calves','Hip Flexors','IT Band / TFL','Ankles / Feet'
 ];
+
+// ── MUSCLE FATIGUE / FRESHNESS (recovery-aware, Fitbod-style) ─────────────────
+// Infers which muscle groups a lift trains (keyword map), logs them each time a
+// workout is completed, and reports how "fresh" each group is based on how long
+// since it was last trained. Lets the app flag what's recovered vs. still fatigued.
+var _MUSCLE_KEYWORDS = {
+  'Chest':['bench','chest','fly','push up','pushup','dip','press (incline','incline press'],
+  'Shoulders':['press','shoulder','overhead','lateral raise','front raise','ohp','push press','arnold'],
+  'Triceps':['tricep','extension','pushdown','skull','dip','close grip'],
+  'Biceps':['curl','bicep','chin'],
+  'Upper Back':['row','pull up','pullup','pulldown','lat','face pull','chin'],
+  'Lower Back':['deadlift','good morning','back extension','hyperext','rdl','stiff leg'],
+  'Core / Abs':['plank','crunch','sit up','situp','ab ','core','hollow','leg raise','woodchop','pallof'],
+  'Glutes':['hip thrust','glute','bridge','hip extension','lunge','squat','rdl','step up'],
+  'Quads':['squat','leg press','lunge','leg extension','split squat','step up','pistol'],
+  'Hamstrings':['deadlift','rdl','ham','leg curl','good morning','stiff leg','nordic'],
+  'Calves':['calf','raise (standing','heel'],
+  'Forearms':['grip','farmer','carry','wrist']
+};
+function musclesForLift(name){
+  var out={}; if(!name) return [];
+  var n=name.toLowerCase();
+  for(var mg in _MUSCLE_KEYWORDS){
+    if(_MUSCLE_KEYWORDS[mg].some(function(k){ return n.indexOf(k)>=0; })) out[mg]=true;
+  }
+  return Object.keys(out);
+}
+// Record (date-stamp) the muscles trained by a completed workout.
+function logMuscleWork(wo){
+  try{
+    var lifts=(typeof loadedLiftsOf==='function')?loadedLiftsOf(wo):[];
+    if(!lifts.length) return;
+    var fatigue=JSON.parse(localStorage.getItem('ffp_muscle_fatigue')||'{}');
+    var today=new Date().toISOString().slice(0,10);
+    lifts.forEach(function(ex){ musclesForLift(ex).forEach(function(mg){ fatigue[mg]=today; }); });
+    localStorage.setItem('ffp_muscle_fatigue', JSON.stringify(fatigue));
+  }catch(e){}
+}
+// Freshness per muscle: days since last trained → 'fresh' | 'recovering' | 'fatigued'.
+function muscleFreshness(){
+  var out={};
+  try{
+    var fatigue=JSON.parse(localStorage.getItem('ffp_muscle_fatigue')||'{}');
+    var now=Date.now();
+    for(var mg in fatigue){
+      var days=Math.floor((now-new Date(fatigue[mg]+'T00:00:00').getTime())/(24*3600*1000));
+      out[mg] = days>=3 ? 'fresh' : (days>=2 ? 'recovering' : 'fatigued');
+    }
+  }catch(e){}
+  return out;
+}
 
 let recoveryLogs = JSON.parse(localStorage.getItem('ffp_recovery_logs') || '[]');
 let sorenessData = JSON.parse(localStorage.getItem('ffp_soreness') || '{}'); // { muscleName: 0-3 }
@@ -16226,15 +16434,20 @@ function buildDailyMealEvents(m, mealsPerDay, dayType, woStart, woEnd, wakeMins,
 
 function _homeNudgeWorkout(delta){
   try{
-    var now=new Date(); var t0=new Date(now.getFullYear(),now.getMonth(),now.getDate());
-    var cur=(typeof getSessionIndexForDate==='function')?getSessionIndexForDate(t0):null;
-    if(cur===null){ cur=(typeof getSequencePin==='function')?getSequencePin().index:0; }
+    // Rotation is completion-driven now, so the nudge adjusts the cycle position
+    // (which workout is "next"). This is also how the user corrects a wrong workout.
     var prog=(typeof getActiveProgram==='function')?getActiveProgram():null;
     var progLen=(prog&&prog.length)?prog.length:12;
+    var cur=(typeof completedInCurrentCycle==='function')?completedInCurrentCycle():0;
     var next=((cur+delta)%progLen+progLen)%progLen;
-    if(typeof setSequencePin==='function'){
-      setSequencePin((typeof ymd==='function')?ymd(t0):new Date(t0.getFullYear(),t0.getMonth(),t0.getDate()).toISOString().slice(0,10), next);
-    }
+    if(typeof setCyclePos==='function') setCyclePos(next);
+    // keep the date pin roughly in sync too (for calendar views)
+    try{
+      var now=new Date(); var t0=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+      if(typeof setSequencePin==='function'){
+        setSequencePin((typeof ymd==='function')?ymd(t0):t0.toISOString().slice(0,10), next);
+      }
+    }catch(e){}
     if(typeof updateWorkoutsPage==='function') updateWorkoutsPage();
     if(typeof renderHomePage==='function') renderHomePage();
   }catch(e){}
@@ -16529,8 +16742,46 @@ function toggleSetCheck(el){
   }catch(e){}
 }
 
+// ── VOLUME LANDMARKS (RP-style MEV → MAV → MRV, then deload) ──────────────────
+// Load isn't the only thing that should progress — VOLUME should too. For volume-
+// driven phases (hypertrophy, endurance) we start the block near MEV (minimum
+// effective volume = base sets), add a set every week or two toward MRV (maximum
+// recoverable), then drop back for the deload. Intensity-driven phases (strength,
+// power, peaking) keep fixed low volume. Returns EXTRA sets to add to the base.
+function volumeLandmarkBonus(phaseKey, phaseWeek, phaseTotal){
+  try{
+    // Only autoregulate volume on accumulation phases.
+    if(['strength','power','maxassess','competition','precomp','recovery'].indexOf(phaseKey)>=0) return 0;
+    if(!phaseWeek || !phaseTotal || phaseTotal<2) return 0;
+    var w=Math.max(1,Math.min(phaseWeek,phaseTotal));
+    // Final week of a block = deload → base volume (0 bonus).
+    if(w===phaseTotal) return 0;
+    // Ramp +1 set roughly every week, capped at +3 over the block (MEV→MRV).
+    var frac=(w-1)/Math.max(1,(phaseTotal-1));
+    return Math.min(3, Math.round(frac*3));
+  }catch(e){ return 0; }
+}
+// Resolve the working-set count for display: base from phase + volume bonus.
+function workingSetCount(ph, phaseKey, phaseWeek, phaseTotal){
+  var base=3;
+  try{
+    var raw = ph && ph.sets;
+    if(typeof raw==='number') base=raw;
+    else if(typeof raw==='string'){ var m=raw.match(/\d+/); if(m) base=parseInt(m[0],10); }
+  }catch(e){}
+  var bonus = (typeof volumeLandmarkBonus==='function') ? volumeLandmarkBonus(phaseKey, phaseWeek, phaseTotal) : 0;
+  return Math.max(1, base + bonus);
+}
+
 function prescriptionLine(s, ex, curEquip, isWeighted, ph, pyramidHTML){
   const style='font-size:0.75rem;color:var(--accent);font-weight:600';
+  // Volume-aware set count (adds sets through the block, drops for deload).
+  var _vSets = (typeof workingSetCount==='function')
+    ? workingSetCount(ph, (typeof currentPhase!=='undefined'?currentPhase:null),
+        (typeof currentPhaseWeek!=='undefined'?currentPhaseWeek:undefined),
+        (typeof currentPhaseTotal!=='undefined'?currentPhaseTotal:undefined))
+    : (ph && ph.sets ? ph.sets : 3);
+  var _setsTxt = _vSets;
   // Speed / agility → sets × distance
   if(isSpeedAgility(s)){
     return `<div style="${style}">${ph.sets} sets × ${distanceFromNote(s.note)}</div>`;
@@ -16567,7 +16818,7 @@ function prescriptionLine(s, ex, curEquip, isWeighted, ph, pyramidHTML){
     const rpe = rpeForPhase(currentPhase);
     const rpeBadge = `<span style="font-size:0.7rem;color:#e67e22;font-weight:700;background:rgba(230,126,34,0.12);border:1px solid #e67e2255;border-radius:99px;padding:0.1rem 0.5rem;margin-left:0.4rem">${rpe.rpe}</span>`;
     if(isSchemeNote(s.note)) return `<div style="${style}">${s.note} ${rpeBadge}<div style="font-size:0.68rem;color:var(--muted);font-weight:400;margin-top:0.15rem">${rpe.cue}</div></div>`;
-    return `<div style="${style}">${ph.sets} sets × ${ph.reps} reps ${rpeBadge}<div style="font-size:0.68rem;color:var(--muted);font-weight:400;margin-top:0.15rem">${rpe.cue}</div></div>`;
+    return `<div style="${style}">${_setsTxt} sets × ${ph.reps} reps ${rpeBadge}<div style="font-size:0.68rem;color:var(--muted);font-weight:400;margin-top:0.15rem">${rpe.cue}</div></div>`;
   }
   // Bodyweight / non-weighted: show the scheme if given, else generic reps.
   // Do NOT inherit weighted-phase scheme text (e.g. Maxes "2–3 warm-up + 2–3 max"),
@@ -16579,7 +16830,7 @@ function prescriptionLine(s, ex, curEquip, isWeighted, ph, pyramidHTML){
     // Bodyweight movements aren't max-tested — prescribe standard volume.
     return `<div style="${style}">3 sets × 12–15 reps</div>`;
   }
-  return `<div style="${style}">${ph.sets} sets × ${ph.reps} reps</div>`;
+  return `<div style="${style}">${_setsTxt} sets × ${ph.reps} reps</div>`;
 }
 
 // Simple info modal popup (used by the high/low bar link, etc.)
@@ -17005,7 +17256,9 @@ function _workoutToText(wo, woNum){
     const equipOverride=(typeof getActiveEquipment==='function')?getActiveEquipment(wo.id,s.head,origLift,null):null;
     let adapted={equipment:s.equipment,exercise:s.exercise||s.lift,swapped:false};
     if(typeof adaptSectionToEquipment==='function' && !equipOverride && !override){ adapted=adaptSectionToEquipment(s); }
-    const ex=override||adapted.exercise||s.exercise||s.lift||s.head||'';
+    let ex=override||adapted.exercise||s.exercise||s.lift||s.head||'';
+    // In the power phase, prescribe the explosive/power variant (e.g. Clean \u2192 Power Clean).
+    if(typeof powerVariant==='function') ex=powerVariant(ex);
     const curEquip=equipOverride||adapted.equipment||s.equipment||'';
     const _nonLoaded=/band|bodyweight|box|cone|ladder|parachute|hill|hurdle|rope|jump rope|wall ball|rower|bike|erg|climbing|ghd|ring/i.test(curEquip||'');
     const isWeighted=!_nonLoaded && weightedEquip.some(eq=>(curEquip||'').startsWith(eq));
@@ -17022,6 +17275,15 @@ function _workoutToText(wo, woNum){
           if(sets&&sets.length){
             const work=sets.filter(x=>!x.warmup);
             presc=work.map(x=>`${x.weight}×${x.reps}`).join('  ');
+            if(work.some(function(x){return x.sub45;})){
+              var _safeEx=(ex||'').replace(/'/g,"\\'");
+              presc+='<div style="margin-top:0.4rem;padding:0.5rem;background:var(--surface2);border:1px dashed var(--accent);border-radius:8px;font-size:0.68rem">'
+                + '<div style="color:var(--muted);margin-bottom:0.4rem">An empty bar (45 lb) is heavier than your target here. Your call:</div>'
+                + '<div style="display:flex;gap:0.4rem">'
+                + '<button onclick="setSub45Choice(\''+_safeEx+'\',\'dumbbell\')" class="btn btn-outline" style="flex:1;font-size:0.66rem;padding:0.3rem">Use dumbbells (lighter)</button>'
+                + '<button onclick="setSub45Choice(\''+_safeEx+'\',\'barbell\')" class="btn btn-outline" style="flex:1;font-size:0.66rem;padding:0.3rem">Warm up to the bar (45 lb)</button>'
+                + '</div></div>';
+            }
           } else presc=`${ph.sets} × ${ph.reps}`;
         } else presc=`${ph.sets} × ${ph.reps}`;
       } else {
@@ -17253,27 +17515,28 @@ async function _shareWorkoutImage(){
           return;
         }
       }catch(e){ if(e && e.name==='AbortError') return; }
-      // No automatic file-share → show the image plus EXPLICIT buttons. Mobile
-      // reliably honors a user-tapped share/open, far more than press-and-hold on
-      // a data-URI image. We use a blob URL (saveable) and stash the file for the
-      // Share button to re-attempt navigator.share on a real tap.
+      // Mobile browsers won't honor a programmatic download. The reliable thing
+      // that works EVERYWHERE is to show the image right here and let the user
+      // long-press (mobile) / right-click (desktop) to save it. We render it from
+      // a data URI (saveable) and also offer native share as an optional button.
       try{
-        var url=URL.createObjectURL(blob);
-        window._shareImgFile=file; window._shareImgUrl=url;
-        try{ window._shareImgDataUrl=canvas.toDataURL('image/png'); }catch(_e){ window._shareImgDataUrl=url; }
-        var box=document.getElementById('share-workout-text');
-        if(box){
-          var wrap=document.createElement('div');
-          wrap.style.cssText='flex:1;overflow:auto;padding:0.9rem 1rem;text-align:center;background:var(--surface2)';
-          wrap.innerHTML=
-            '<img src="'+url+'" style="max-width:100%;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.2);margin-bottom:0.75rem">'
-            + '<div style="display:flex;gap:0.5rem;flex-wrap:wrap">'
-            + '<button class="btn" style="flex:1;min-width:120px" onclick="_shareImgNow()">📤 Share / Save image</button>'
-            + '<button class="btn btn-outline" style="flex:1;min-width:120px" onclick="_openShareImg()">↗ Open full size</button>'
-            + '</div>'
-            + '<div style="font-size:0.66rem;color:var(--muted);margin-top:0.5rem">Tap Share to save to Photos or send it · or Open full size, then press and hold.</div>';
-          box.parentNode.replaceChild(wrap, box);
-        }
+        // Use a BLOB URL (not a data URI). Chrome on Android blocks the
+        // long-press "Save image" menu on data: URIs, but allows it on blob URLs.
+        var blobUrl = URL.createObjectURL(blob);
+        window._shareImgFile = file; window._shareImgBlobUrl = blobUrl;
+        var box = document.getElementById('share-workout-text');
+        var host = box ? box.parentNode : null;
+        var wrap = document.createElement('div');
+        wrap.style.cssText='flex:1;overflow:auto;padding:0.9rem 1rem;text-align:center;background:var(--surface2)';
+        wrap.innerHTML =
+          '<div style="font-size:0.78rem;font-weight:700;color:var(--text);margin-bottom:0.3rem">Your workout image is ready</div>'
+          + '<div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.7rem">Tap the green button to download it, or press &amp; hold the image to save/share.</div>'
+          + '<img src="'+blobUrl+'" style="max-width:100%;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.2)">'
+          + '<a href="'+blobUrl+'" download="milton-workout.png" class="btn" style="display:block;width:100%;margin-top:0.7rem;text-align:center;text-decoration:none">\u2b07\ufe0f Download image</a>'
+          + '<button onclick="_shareImgNativeOnly()" class="btn btn-outline" style="width:100%;margin-top:0.5rem">\ud83d\udce4 Share via apps</button>';
+        if(box && host){ host.replaceChild(wrap, box); }
+        else if(host){ host.appendChild(wrap); }
+        wrap.scrollIntoView({behavior:'smooth', block:'center'});
       }catch(e2){
         if(typeof showStackToast==='function') showStackToast('Could not display image.');
       }
@@ -17303,6 +17566,17 @@ function _openShareImg(){
     }
   }catch(e){}
 }
+async function _shareImgNativeOnly(){
+  try{
+    var file=window._shareImgFile;
+    if(file && navigator.share && (!navigator.canShare || navigator.canShare({files:[file]}))){
+      navigator.share({files:[file], title:'Milton Workout'}).catch(function(){});
+      return;
+    }
+    if(navigator.share){ navigator.share({title:'Milton Workout'}).catch(function(){}); return; }
+    if(typeof showStackToast==='function') showStackToast('Press & hold the image to save it.');
+  }catch(e){ if(typeof showStackToast==='function') showStackToast('Press & hold the image to save it.'); }
+}
 async function _shareImgNow(){
   var file=window._shareImgFile, url=window._shareImgUrl;
   try{
@@ -17328,6 +17602,138 @@ function _shareWorkoutCopy(){
   const ok=_shareDoCopy();
   _shareCopyFeedback(ok);
 }
+// ── WORKOUT CLOCK + REST TIMER ───────────────────────────────────────────────
+// A sticky bar during a workout: an elapsed clock (counts up for the whole
+// session) and a rest timer (counts down the prescribed rest, with an alert at 0).
+// Shown only for workouts that actually have rest/time prescriptions.
+var _woClock = { start:0, elapsedInt:null, restInt:null, restLeft:0 };
+function _fmtClock(sec){
+  sec=Math.max(0,Math.round(sec));
+  var m=Math.floor(sec/60), s=sec%60;
+  return m+':'+(s<10?'0':'')+s;
+}
+function startWorkoutClock(){
+  try{
+    if(_woClock.elapsedInt) return; // already running
+    _woClock.start = Date.now();
+    _woClock.elapsedInt = setInterval(function(){
+      var el=document.getElementById('wo-elapsed');
+      if(el) el.textContent=_fmtClock((Date.now()-_woClock.start)/1000);
+    }, 1000);
+  }catch(e){}
+}
+function stopWorkoutClock(){
+  try{
+    if(_woClock.elapsedInt){ clearInterval(_woClock.elapsedInt); _woClock.elapsedInt=null; }
+    if(_woClock.restInt){ clearInterval(_woClock.restInt); _woClock.restInt=null; }
+  }catch(e){}
+}
+function startRest(seconds){
+  try{
+    seconds = seconds|0; if(seconds<=0) seconds=60;
+    if(_woClock.restInt){ clearInterval(_woClock.restInt); _woClock.restInt=null; }
+    _woClock.restLeft = seconds;
+    var btn=document.getElementById('wo-rest-btn');
+    function paint(){
+      var el=document.getElementById('wo-rest-display');
+      if(el) el.textContent=_fmtClock(_woClock.restLeft);
+    }
+    paint();
+    _woClock.restInt = setInterval(function(){
+      _woClock.restLeft--;
+      paint();
+      if(_woClock.restLeft<=0){
+        clearInterval(_woClock.restInt); _woClock.restInt=null;
+        var el=document.getElementById('wo-rest-display');
+        if(el){ el.textContent='GO'; el.style.color='var(--accent)'; }
+        try{ if(navigator.vibrate) navigator.vibrate([200,80,200]); }catch(e){}
+        setTimeout(function(){ if(el){ el.textContent=''; el.style.color=''; } }, 4000);
+      }
+    }, 1000);
+  }catch(e){}
+}
+// Default rest (seconds) for this workout, parsed from the phase's rest range.
+// Rest for a SPECIFIC exercise. Rest isn't stored per lift, so we derive it from
+// exercise-science principles: heavy compounds need the most recovery, isolations
+// the least, power work needs full recovery for quality. We use the lift's
+// bodyweight ratio (baseMult) as the compound↔isolation proxy, scaled into the
+// current phase's rest range.
+function restForExercise(exName){
+  try{
+    var base = defaultRestSeconds();           // phase midpoint, the anchor
+    var ph=(typeof PHASES!=='undefined' && PHASES[currentPhase])?PHASES[currentPhase]:null;
+    var r = ph && (ph.restSec||ph.rest) ? String(ph.restSec||ph.rest) : '';
+    var nums=(r.match(/\d+/g)||[]).map(Number);
+    var mins=/min/i.test(r);
+    var lo = nums.length? (mins?nums[0]*60:nums[0]) : Math.round(base*0.7);
+    var hi = nums.length>1? (mins?nums[1]*60:nums[1]) : Math.round(base*1.3);
+    if(hi<lo){ var t=lo; lo=hi; hi=t; }
+    // Power/max phases → always the top of the range (full recovery for quality).
+    if(['power','maxassess','competition','precomp'].indexOf(currentPhase)>=0) return hi;
+    // Otherwise place within [lo,hi] by how "big" the lift is (ratio 0.08..1.0).
+    var ratio = (typeof baseMult!=='undefined' && exName && baseMult[exName]!=null) ? baseMult[exName] : 0.4;
+    var pos = Math.max(0, Math.min(1, (ratio-0.08)/(0.92)));  // isolation→0, big compound→1
+    return Math.round(lo + pos*(hi-lo));
+  }catch(e){ return defaultRestSeconds(); }
+}
+
+function defaultRestSeconds(){
+  try{
+    var ph=(typeof PHASES!=='undefined' && PHASES[currentPhase])?PHASES[currentPhase]:null;
+    var r = ph && (ph.restSec||ph.rest) ? String(ph.restSec||ph.rest) : '';
+    var nums=(r.match(/\d+/g)||[]).map(Number);
+    if(!nums.length) return 90;
+    // if the range is in minutes (e.g. "2–5 min"), convert
+    var mins=/min/i.test(r);
+    var val = nums.length>1 ? Math.round((nums[0]+nums[1])/2) : nums[0];
+    return mins ? val*60 : val;
+  }catch(e){ return 90; }
+}
+// Does this workout warrant the clock? (has loaded lifts, timed, or rest prescriptions)
+function workoutHasTiming(wo){
+  try{
+    if(!wo || !wo.sections) return false;
+    // Any weighted/strength work implies rest between sets; any timed note implies a clock.
+    return wo.sections.some(function(s){
+      var eq=s.equipment||''; var note=s.note||'';
+      return /BB|DB|KB|Cable|Machine|Smith/i.test(eq) || /\b\d+\s*(s|sec|min)\b/i.test(note) || /AMRAP|EMOM|for time|circuit/i.test(note);
+    });
+  }catch(e){ return false; }
+}
+function workoutClockBarHTML(wo){
+  if(!workoutHasTiming(wo)) return '';
+  return '<div id="wo-clock-bar" style="position:sticky;bottom:0;z-index:20;display:flex;align-items:center;gap:0.6rem;'
+    + 'background:var(--surface);border-top:1px solid var(--border);padding:0.5rem 0.75rem;margin:0.75rem -0.1rem 0">'
+    + '<div style="flex:1"><div style="font-size:0.56rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">Workout</div>'
+    + '<div id="wo-elapsed" style="font-size:1.1rem;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums">0:00</div></div>'
+    + '<button id="wo-clock-btn" onclick="toggleWorkoutClock()" class="btn btn-outline" style="font-size:0.72rem;padding:0.4rem 0.8rem;white-space:nowrap">\u25b6 Start</button>'
+    + '<div style="text-align:center"><div style="font-size:0.56rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">Rest</div>'
+    + '<div id="wo-rest-display" style="font-size:1.1rem;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums;min-width:2.5rem"></div></div>'
+    + '</div>';
+}
+// User-controlled: Start / Pause the workout clock. Nothing runs until tapped.
+function toggleWorkoutClock(){
+  try{
+    var btn=document.getElementById('wo-clock-btn');
+    if(_woClock.elapsedInt){
+      // running → pause
+      stopWorkoutClock();
+      if(btn){ btn.textContent='\u25b6 Resume'; }
+    } else {
+      // not running → start (or resume, preserving elapsed)
+      if(!_woClock.start){ _woClock.start=Date.now(); }
+      else { _woClock.start=Date.now()-(_woClock.pausedAt||0); } // resume from where paused
+      _woClock.elapsedInt=setInterval(function(){
+        var el=document.getElementById('wo-elapsed');
+        var secs=(Date.now()-_woClock.start)/1000;
+        _woClock.pausedAt=secs*1000;
+        if(el) el.textContent=_fmtClock(secs);
+      },1000);
+      if(btn){ btn.textContent='\u23f8 Pause'; }
+    }
+  }catch(e){}
+}
+
 function renderWorkoutDetail(wo,container,opts){
   opts=opts||{};
   if(!wo){container.innerHTML='<div class="alert alert-warning">Workout not found.</div>';return;}
@@ -17379,10 +17785,21 @@ function renderWorkoutDetail(wo,container,opts){
       ${noteHTML}
       ${presc}
       ${(typeof setChecksHTML==='function')?setChecksHTML(setCountFor(ph,s), uid):''}
+      ${(isWeighted && typeof restForExercise==='function' && typeof _fmtClock==='function')?('<button onclick="startRest('+restForExercise(ex)+')" class="btn btn-outline" style="margin-top:0.4rem;font-size:0.66rem;padding:0.28rem 0.7rem">\u23f1 Rest '+_fmtClock(restForExercise(ex))+'</button>'):''}
       ${cuesHTML}
     </div>`;
   }).join('');
   container.innerHTML=`${(!opts.hideDisclaimer && typeof maternityDisclaimerHTML==='function')?maternityDisclaimerHTML():''}<div class="card" style="margin-top:0.75rem"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem"><div><div style="font-size:0.65rem;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">Workout ${woNum} of 12</div><div style="font-size:1.1rem;font-weight:800;color:var(--text)">${wo.label}</div><div style="font-size:0.8rem;font-weight:700;color:var(--accent)">${wo.type} Day</div>${(typeof progressionIndicatorHTML==='function' && typeof currentPhase!=='undefined')?progressionIndicatorHTML(currentPhase):''}</div><button onclick="shareWorkout('${wo.id||''}',${woNum})" class="btn btn-sm" style="padding:0.4rem 0.7rem;font-size:0.75rem;font-weight:700;white-space:nowrap">↗ Share</button></div><div style="background:var(--surface2);border-radius:10px;padding:0.75rem;margin-bottom:0.75rem"><div style="font-size:0.68rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:0.5rem">🔥 Warm-Up</div><div style="display:flex;flex-direction:column;gap:0.5rem"><div><span style="font-size:0.72rem;font-weight:700;color:var(--muted)">Cardio: </span><span style="font-size:0.85rem;font-weight:600">${wup.cardio||''}</span> <span style="font-size:0.75rem;color:var(--muted)">· ${wup.duration||''}</span></div><div><span style="font-size:0.72rem;font-weight:700;color:var(--muted)">Massage Gun: </span><span style="font-size:0.82rem;color:var(--accent);font-weight:500">All muscles being trained today + any sore areas.</span></div><div><div style="font-size:0.72rem;font-weight:700;color:var(--muted);margin-bottom:0.25rem">Mobility (specific to today\u2019s lifts):</div><div style="display:flex;flex-direction:column;gap:0.3rem">${getWarmupMobilityForWorkout(wo).map(m=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem"><span style="font-size:0.78rem">${m}</span>${typeof videoBtnHTML==='function'?videoBtnHTML(m):''}</div>`).join('')}</div></div></div></div>${sectionsHTML}${(typeof cardioFinisherHTML==='function'?cardioFinisherHTML(wo):'')}${(typeof sportSAPHTML==='function'?sportSAPHTML(wo):'')}${(typeof sportSCFinisherHTML==='function'?sportSCFinisherHTML(wo):'')}${renderWorkoutCompleteSection(wo,woNum)}</div>`;
+  // Workout clock + rest timer (only for workouts with timing/rest prescriptions).
+  try{
+    if(typeof workoutClockBarHTML==='function'){
+      var _bar=workoutClockBarHTML(wo);
+      // Reset any prior clock state and insert the bar; the user starts it with the Start button.
+      if(typeof stopWorkoutClock==='function') stopWorkoutClock();
+      _woClock.start=0; _woClock.pausedAt=0;
+      if(_bar){ container.insertAdjacentHTML('beforeend', _bar); }
+    }
+  }catch(e){}
 }
 
 // ── Workout completion + "how did it feel" feedback ───────────────────────
@@ -17418,7 +17835,20 @@ function renderWorkoutCompleteSection(wo, woNum){
             +'</div>'
             +'<div style="display:flex;gap:0.3rem">'+pill('light','\u2193 Too light')+pill('right','\u2713 Just right')+pill('heavy','\u2191 Too heavy')+'</div>'
             +'</div>'; }).join('');
-        return header+rows; })()}
+        var anchor=(typeof amrapAnchorLift==='function')?amrapAnchorLift(wo):null;
+        var amrapBlock = anchor ? (
+          '<div style="margin:0.5rem 0 0.7rem;padding:0.6rem;background:var(--surface);border:1px dashed var(--accent);border-radius:8px">'
+          + '<div style="font-size:0.72rem;font-weight:800;color:var(--accent);margin-bottom:0.2rem">⚡ Optional: AMRAP top set — '+anchor+'</div>'
+          + '<div style="font-size:0.64rem;color:var(--muted);margin-bottom:0.45rem">Did a max-rep set on your top lift? Log it and we’ll update your strength automatically.</div>'
+          + '<div style="display:flex;gap:0.4rem;align-items:center">'
+          + '<input id="amrap-weight" type="number" inputmode="numeric" placeholder="weight" style="flex:1;min-width:0;padding:0.35rem;font-size:0.72rem;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)">'
+          + '<span style="font-size:0.7rem;color:var(--muted)">\\u00d7</span>'
+          + '<input id="amrap-reps" type="number" inputmode="numeric" placeholder="reps" style="flex:1;min-width:0;padding:0.35rem;font-size:0.72rem;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text)">'
+          + '</div>'
+          + '<div id="amrap-result" style="font-size:0.66rem;color:var(--accent);margin-top:0.35rem;min-height:0.9rem"></div>'
+          + '</div>'
+        ) : '';
+        return header+rows+amrapBlock; })()}
       <button onclick="completeWorkout('${wo.type}',${woNum},'perlift')" class="btn btn-primary" style="width:100%;padding:0.6rem;font-size:0.82rem;font-weight:800;margin-top:0.3rem">Save & finish \u2713</button>
     </div>
     <button onclick="document.getElementById('feel-prompt').style.display='block';this.style.display='none'" class="btn" style="width:100%;padding:0.9rem;font-size:0.95rem">✅ Finish Workout</button>
@@ -17462,7 +17892,15 @@ function completeWorkout(type, woNum, feel){
 
   completed.push({ id:'W'+woNum, type, feel, date:new Date().toISOString() });
   localStorage.setItem('ffp_completed_workouts', JSON.stringify(completed));
+  try{ if(typeof advanceCyclePos==='function') advanceCyclePos(); }catch(e){} // completion-driven rotation
   try{ computeDailyScore(); }catch(e){}
+  // Recovery-aware fatigue: record which muscle groups this workout trained.
+  try{
+    if(typeof logMuscleWork==='function' && typeof getActiveProgram==='function'){
+      var _pgM=getActiveProgram(); var _woM=(_pgM && _pgM[(((woNum-1)%_pgM.length)+_pgM.length)%_pgM.length])||null;
+      if(_woM) logMuscleWork(_woM);
+    }
+  }catch(e){}
   // (Set checks are NOT cleared per-workout — they persist across the whole block
   //  and clear only when the full set of workouts for the style is finished; see
   //  the block-completion trigger below.)
@@ -17482,6 +17920,15 @@ function completeWorkout(type, woNum, feel){
           _loaded.forEach(function(ex){ recordLiftLoadRating(ex, _loads[ex]||'right'); });
         }
       }
+      // AMRAP top-set → recalibrate the anchor lift's max (objective progression).
+      try{
+        var awEl=document.getElementById('amrap-weight'), arEl=document.getElementById('amrap-reps');
+        if(awEl && arEl && awEl.value && arEl.value && _wo && typeof amrapAnchorLift==='function'){
+          var anchor=amrapAnchorLift(_wo);
+          var w=parseFloat(awEl.value), r=parseInt(arEl.value,10);
+          if(anchor && w>0 && r>0){ recordAmrap(anchor, w, r); }
+        }
+      }catch(e){}
       _liftMisses={}; _liftLoad={}; // reset for next prompt
     }
   }catch(e){}
@@ -17571,6 +18018,39 @@ function completeWorkout(type, woNum, feel){
 
 
 function estimate1RM(weight,reps){if(reps===1)return weight;return Math.round(weight*(1+reps/30));}
+
+// ── AMRAP-DRIVEN MAX RECALIBRATION (objective performance progression) ────────
+// The strongest, most objective progression signal: on a designated top set, the
+// athlete does as many reps as possible (AMRAP). We convert that weight×reps to a
+// fresh 1RM estimate. If it beats the stored max, we raise the max — which makes
+// EVERY prescribed load for that lift recompute upward automatically. This is more
+// objective than feel-based autoregulation: the bar either moved or it didn't.
+function recordAmrap(exName, weight, reps){
+  try{
+    if(!exName || !(weight>0) || !(reps>0)) return null;
+    var newE = estimate1RM(weight, reps);
+    var maxes = JSON.parse(localStorage.getItem('ffp_maxes')||'{}');
+    var cur = (maxes[exName] && maxes[exName].oneRM) ? maxes[exName].oneRM : 0;
+    var result = { exName:exName, estimated:newE, previous:cur, updated:false };
+    // Only raise the max (never silently lower it from a single hard day). A big
+    // jump is capped at +10% per update for safety against a fluke/typo.
+    if(newE > cur){
+      var capped = cur>0 ? Math.min(newE, Math.round(cur*1.10)) : newE;
+      maxes[exName] = { weight:weight, reps:reps, oneRM:capped, date:new Date().toISOString().slice(0,10) };
+      localStorage.setItem('ffp_maxes', JSON.stringify(maxes));
+      result.updated = true; result.newMax = capped; result.capped = (capped<newE);
+    }
+    return result;
+  }catch(e){ return null; }
+}
+// Which exercise in a workout is the AMRAP "anchor" lift (the main compound).
+// Heuristic: the first loaded strength-group lift. Returns its name or null.
+function amrapAnchorLift(wo){
+  try{
+    var lifts = (typeof loadedLiftsOf==='function') ? loadedLiftsOf(wo) : [];
+    return lifts.length ? lifts[0] : null;
+  }catch(e){ return null; }
+}
 // ── BOMPA CROSS-BLOCK PROGRESSIVE OVERLOAD ───────────────────────────────────
 // Each time an athlete completes a block in a given mode, that mode's %1RM
 // window ratchets up (+3% per block) and reps shift toward the low end of the
@@ -17869,7 +18349,7 @@ function getPyramidSets(phaseKey,oneRepMax,isBarbell,phaseWeek,phaseTotal,weeksT
   const WORK={
     hypertrophy:[{pct:0.67,reps:'12'},{pct:0.74,reps:'10'},{pct:0.80,reps:'8'}],
     endurance:[{pct:0.55,reps:'20'},{pct:0.60,reps:'18'},{pct:0.65,reps:'15'}],
-    strength:[{pct:0.85,reps:'6'},{pct:0.88,reps:'4'},{pct:0.90,reps:'3'}],
+    strength:[{pct:0.85,reps:'7'},{pct:0.88,reps:'4'},{pct:0.90,reps:'3'}],
     maxassess:[{pct:0.85,reps:'2'},{pct:0.92,reps:'1'},{pct:0.97,reps:'1'}],
     power:[{pct:0.45,reps:'5'},{pct:0.50,reps:'4'},{pct:0.55,reps:'3'}],
     competition:[{pct:0.85,reps:'2'},{pct:0.90,reps:'1'},{pct:0.95,reps:'1'}],
@@ -17888,12 +18368,25 @@ function getPyramidSets(phaseKey,oneRepMax,isBarbell,phaseWeek,phaseTotal,weeksT
   // Backward compatible: if not supplied, multiplier is a neutral 1.0.
   function weeklyLoadMult(key,wk,total,weeksToComp){
     // CALENDAR-AWARE TAPER (highest priority): if a real competition date is set
-    // and it's within the final 3 weeks, taper by ACTUAL weeks-to-meet so the
-    // athlete peaks exactly on meet day — crisper than block-position tapering.
-    //   3 weeks out → −4% · 2 weeks → −7% · 1 week → −10% · meet week → −3% (sharp, fresh)
+    // and it's within the final 3 weeks, taper by ACTUAL weeks-to-meet. Crucially,
+    // HOW the weight room tapers depends on what the competition is:
+    //   • lift-sport (powerlifting/weightlifting): the lift IS the event, so only a
+    //     light taper — stay heavy and sharpen toward a maximal day.
+    //   • power-support (sprinter, jumper, thrower, court/field sport): the gym
+    //     SUPPORTS the sport — slash barbell load hard so legs/CNS are fresh and
+    //     explosive for the actual event. An 85% squat race-week would ruin them.
+    //   • endurance-support: maintain a touch of intensity, drop volume more.
     if(typeof weeksToComp==='number' && weeksToComp>=0 && weeksToComp<=3){
-      const taperByWeek={3:0.96, 2:0.93, 1:0.90, 0:0.97};
-      return taperByWeek[weeksToComp];
+      var role = (typeof sportLiftRole==='function') ? sportLiftRole() : 'general';
+      var taperTable = {
+        // week-3, week-2, week-1, meet/game week
+        'lift-sport':      {3:0.96, 2:0.93, 1:0.90, 0:0.97}, // peak the lift (light taper)
+        'power-support':   {3:0.90, 2:0.80, 1:0.65, 0:0.50}, // get FRESH for the sport
+        'endurance-support':{3:0.90, 2:0.82, 1:0.72, 0:0.60},
+        'general':         {3:0.94, 2:0.88, 1:0.82, 0:0.80}  // sensible default unload
+      };
+      var tbl2 = taperTable[role] || taperTable['general'];
+      return tbl2[weeksToComp];
     }
     if(!wk||!total||total<2) return 1.0;
     const t=total, w=Math.max(1,Math.min(wk,t));
@@ -17963,12 +18456,36 @@ function getPyramidSets(phaseKey,oneRepMax,isBarbell,phaseWeek,phaseTotal,weeksT
   const sets = warm.concat(work.map(w=>({pct:w.pct, reps:w.reps, warmup:false, note:w.note||''})));
 
   if(!oneRepMax)return sets.map(s=>({reps:s.reps,pct:s.pct,weight:null,warmup:!!s.warmup,note:s.note||''}));
+  // When a BARBELL lift's working weight falls below 45 lb (an empty bar), the
+  // athlete has a real choice: use dumbbells (lighter, honest to the target) or
+  // warm up to the empty bar. We honor a saved per-exercise choice, and otherwise
+  // flag it so the UI can ask once. The coach's barbell selection is never silently
+  // overridden — the athlete decides.
+  var _choice = (isBarbell && typeof getSub45Choice==='function' && exName) ? getSub45Choice(exName) : null;
   return sets.map(s=>{
     let w=Math.round(oneRepMax*s.pct/5)*5;
-    // Barbell floor: an empty standard barbell is 45 lb — never prescribe less.
-    if(isBarbell) w=Math.max(45,w);
-    return {reps:s.reps,pct:s.pct,weight:w,warmup:!!s.warmup,note:s.note||''};
+    var belowBar = (isBarbell && !s.warmup && w<45);
+    var flag=false, useDB=false;
+    if(isBarbell){
+      if(belowBar && _choice==='dumbbell'){ useDB=true; /* keep the lighter w */ }
+      else if(belowBar && _choice==='barbell'){ w=45; }
+      else if(belowBar){ w=45; flag=true; /* no choice yet → default 45, ask via flag */ }
+      else { w=Math.max(45,w); }
+    }
+    return {reps:s.reps,pct:s.pct,weight:w,warmup:!!s.warmup,note:s.note||'',
+            sub45:flag, sub45DB:useDB};
   });
+}
+// Per-exercise choice when an empty bar (45lb) exceeds the target weight:
+// 'dumbbell' (go lighter with DBs) or 'barbell' (warm up to the empty bar).
+function getSub45Choice(exName){
+  try{ var o=JSON.parse(localStorage.getItem('ffp_sub45_choice')||'{}'); return o[exName]||null; }catch(e){ return null; }
+}
+function setSub45Choice(exName, choice){
+  try{ var o=JSON.parse(localStorage.getItem('ffp_sub45_choice')||'{}'); o[exName]=choice;
+       localStorage.setItem('ffp_sub45_choice', JSON.stringify(o));
+       if(typeof updateWorkoutsPage==='function') updateWorkoutsPage();
+  }catch(e){}
 }
 function renderPyramidTable(exercise,phaseKey,curEquip){
   if(!maxes)maxes={};
@@ -17998,7 +18515,12 @@ function renderPyramidTable(exercise,phaseKey,curEquip){
   // The 45 lb floor is a property of the EQUIPMENT IN USE, not of the lift. A curl on a
   // barbell floors at 45; the same curl on dumbbells does not. Only the actual current
   // equipment decides. (MAXABLE equipment list is for max-lookup, not for the floor.)
-  const isBarbell=!_isUni && /^BB\b|barbell|^EZ|ez curl|ez bar/i.test(curEquip||'');
+  // The 45 lb floor is purely a property of the EQUIPMENT: if a barbell is selected,
+  // the weight can never be under 45 (empty bar) — even on a unilateral lift like a
+  // barbell single-leg squat. The coach's equipment choice is respected; we just make
+  // the load valid for it. (Previously this wrongly excluded unilateral lifts, so a
+  // barbell SL squat could show sub-45 lb.)
+  const isBarbell=/^BB\b|barbell|^EZ|ez curl|ez bar/i.test(curEquip||'');
   // No tested max yet → fall back to a SAFE estimated 1RM from the user's profile,
   // so every maxable lift still shows prescribed weights/sets/reps/rest.
   if(!oneRM && typeof estimateMax==='function'){

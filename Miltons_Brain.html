@@ -7620,7 +7620,9 @@ function videoLink(exerciseName, equipment) {
   } else {
     const eqWord = equipment ? (EQ_WORDS[equipment]!==undefined ? EQ_WORDS[equipment] : equipment) : '';
     const base = eqWord ? `${eqWord} ${exerciseName}` : exerciseName;
-    query = encodeURIComponent(base + ' exercise technique');
+    // More specific, tutorial-focused phrasing surfaces clear step-by-step form
+    // videos for the average lifter (the athlete's feedback), not random clips.
+    query = encodeURIComponent('how to do ' + base + ' proper form tutorial for beginners');
   }
   return `https://www.youtube.com/results?search_query=${query}`;
 }
@@ -15614,6 +15616,13 @@ function computeRecoveryScore(){
   if(today && today.strain!=null && today.strain!==''){ // high strain lowers recovery readiness
     const st=parseFloat(today.strain); if(!isNaN(st)){ const s=_clamp(100 - st*4.2, 0, 100); comp.push(s); parts.push(['Strain', Math.round(s)]); }
   }
+  // COMPLETED RECOVERY WORK: doing the prescribed mobility/soft-tissue session is a
+  // real recovery input. When done today, it contributes a strong component (and
+  // gives a score even when no wearable/sleep data exists, so the button always
+  // visibly helps the recovery score — which is exactly the athlete's request).
+  if(typeof recoveryDoneToday==='function' && recoveryDoneToday()){
+    comp.push(85); parts.push(['Recovery work', 85]);
+  }
   if(base==null && comp.length){ base = comp.reduce((a,c)=>a+c,0)/comp.length; }
   else if(base!=null && comp.length){ base = base*0.6 + (comp.reduce((a,c)=>a+c,0)/comp.length)*0.4; }
   if(base==null) return { score:null, have:false, parts:[], explain:['No recovery data yet. Set your wake/bed times on the schedule, log a recovery entry, or connect a wearable (HRV, resting HR, sleep) to generate a Recovery score.'] };
@@ -15893,9 +15902,26 @@ function markWorkoutComplete(workoutId) {
 
 function markRecoveryComplete() {
   const rec = JSON.parse(localStorage.getItem('ffp_recovery_done') || '[]');
-  rec.push({ date: new Date().toISOString() });
-  localStorage.setItem('ffp_recovery_done', JSON.stringify(rec));
-  checkForNewBadges();
+  const todayKey = (typeof _todayKey==='function') ? _todayKey() : new Date().toISOString().slice(0,10);
+  // Idempotent: don't double-log the same day.
+  if(!rec.some(function(r){ return (r.dateKey||(''+r.date).slice(0,10))===todayKey; })){
+    rec.push({ date: new Date().toISOString(), dateKey: todayKey });
+    localStorage.setItem('ffp_recovery_done', JSON.stringify(rec));
+  }
+  try{ if(typeof checkForNewBadges==='function') checkForNewBadges(); }catch(e){}
+  // Credit the recovery score — doing the prescribed mobility/soft-tissue work is a
+  // real recovery input, so it should lift today's recovery score.
+  try{ if(typeof computeDailyScore==='function') computeDailyScore(); }catch(e){}
+  try{ if(typeof renderHomePage==='function') renderHomePage(); }catch(e){}
+  try{ if(typeof updateWorkoutsPage==='function') updateWorkoutsPage(); }catch(e){}
+}
+// Did the athlete complete their recovery work today?
+function recoveryDoneToday(){
+  try{
+    const rec=JSON.parse(localStorage.getItem('ffp_recovery_done')||'[]');
+    const todayKey=(typeof _todayKey==='function')?_todayKey():new Date().toISOString().slice(0,10);
+    return rec.some(function(r){ return (r.dateKey||(''+r.date).slice(0,10))===todayKey; });
+  }catch(e){ return false; }
 }
 
 function checkForNewBadges() {
@@ -16606,6 +16632,10 @@ function renderRecoveryDay(container,prevWo){
 
   // Breathwork to close
   html+=`<div class="card" style="margin-bottom:0.75rem"><div style="font-size:0.68rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem">💨 Breathwork</div><div style="font-size:0.85rem;font-weight:600">Box Breathing — 4 rounds</div><div style="font-size:0.75rem;color:var(--muted)">Inhale 4s → Hold 4s → Exhale 4s → Hold 4s · ~4 min total to down-regulate the nervous system</div></div>`;
+
+  // Finished recovery work → credits the recovery score (mirrors Finish Workout).
+  var _recDone = (typeof recoveryDoneToday==='function') && recoveryDoneToday();
+  html+=`<button onclick="markRecoveryComplete()" ${_recDone?'disabled':''} style="width:100%;padding:0.7rem;font-size:0.9rem;font-weight:800;border:none;border-radius:12px;cursor:${_recDone?'default':'pointer'};color:#fff;background:${_recDone?'linear-gradient(135deg,#3a9972,#2d7a5f)':'linear-gradient(135deg,#2d7a5f,#1a6b4a)'}">${_recDone?'✅ Recovery Complete — nice work':'✓ Finished Recovery Work'}</button>`;
 
   container.innerHTML=html;
 }
@@ -17785,7 +17815,7 @@ function renderWorkoutDetail(wo,container,opts){
       ${cuesHTML}
     </div>`;
   }).join('');
-  container.innerHTML=`${(!opts.hideDisclaimer && typeof maternityDisclaimerHTML==='function')?maternityDisclaimerHTML():''}<div class="card" style="margin-top:0.75rem"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem"><div><div style="font-size:0.65rem;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">Workout ${woNum} of 12</div><div style="font-size:1.1rem;font-weight:800;color:var(--text)">${wo.label}</div><div style="font-size:0.8rem;font-weight:700;color:var(--accent)">${wo.type} Day</div>${(typeof progressionIndicatorHTML==='function' && typeof currentPhase!=='undefined')?progressionIndicatorHTML(currentPhase):''}</div><button onclick="shareWorkout('${wo.id||''}',${woNum})" class="btn btn-sm" style="padding:0.4rem 0.7rem;font-size:0.75rem;font-weight:700;white-space:nowrap">↗ Share</button></div><div style="background:var(--surface2);border-radius:10px;padding:0.75rem;margin-bottom:0.75rem"><div style="font-size:0.68rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:0.5rem">🔥 Warm-Up</div><div style="display:flex;flex-direction:column;gap:0.5rem"><div><span style="font-size:0.72rem;font-weight:700;color:var(--muted)">Cardio: </span><span style="font-size:0.85rem;font-weight:600">${wup.cardio||''}</span> <span style="font-size:0.75rem;color:var(--muted)">· ${wup.duration||''}</span></div><div><span style="font-size:0.72rem;font-weight:700;color:var(--muted)">Massage Gun: </span><span style="font-size:0.82rem;color:var(--accent);font-weight:500">All muscles being trained today + any sore areas.</span></div><div><div style="font-size:0.72rem;font-weight:700;color:var(--muted);margin-bottom:0.25rem">Mobility (specific to today\u2019s lifts):</div><div style="display:flex;flex-direction:column;gap:0.3rem">${getWarmupMobilityForWorkout(wo).map(m=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem"><span style="font-size:0.78rem">${m}</span>${typeof videoBtnHTML==='function'?videoBtnHTML(m):''}</div>`).join('')}</div></div></div></div>${sectionsHTML}${(typeof cardioFinisherHTML==='function'?cardioFinisherHTML(wo):'')}${(typeof sportSAPHTML==='function'?sportSAPHTML(wo):'')}${(typeof sportSCFinisherHTML==='function'?sportSCFinisherHTML(wo):'')}${renderWorkoutCompleteSection(wo,woNum)}</div>`;
+  container.innerHTML=`${(!opts.hideDisclaimer && typeof maternityDisclaimerHTML==='function')?maternityDisclaimerHTML():''}<div class="card" style="margin-top:0.75rem"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem"><div><div style="font-size:0.65rem;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">Workout ${woNum} of 12</div><div style="font-size:1.1rem;font-weight:800;color:var(--text)">${wo.label}</div><div style="font-size:0.8rem;font-weight:700;color:var(--accent)">${wo.type} Day</div>${(typeof progressionIndicatorHTML==='function' && typeof currentPhase!=='undefined')?progressionIndicatorHTML(currentPhase):''}</div><button onclick="shareWorkout('${wo.id||''}',${woNum})" class="btn btn-sm" style="padding:0.4rem 0.7rem;font-size:0.75rem;font-weight:700;white-space:nowrap">↗ Share</button></div><div style="background:var(--surface2);border-radius:10px;padding:0.75rem;margin-bottom:0.75rem"><div style="font-size:0.68rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:0.5rem">🔥 Warm-Up</div><div style="display:flex;flex-direction:column;gap:0.5rem"><div><span style="font-size:0.72rem;font-weight:700;color:var(--muted)">Cardio: </span><span style="font-size:0.85rem;font-weight:600">${wup.cardio||''}</span> <span style="font-size:0.75rem;color:var(--muted)">· ${wup.duration||''}</span></div><div><span style="font-size:0.72rem;font-weight:700;color:var(--muted)">Massage Gun: </span><span style="font-size:0.82rem;color:var(--accent);font-weight:500">All muscles being trained today + any sore areas.</span></div><div><div style="font-size:0.72rem;font-weight:700;color:var(--muted);margin-bottom:0.25rem">Mobility (specific to today\u2019s lifts):</div><div style="display:flex;flex-direction:column;gap:0.3rem">${getWarmupMobilityForWorkout(wo).map(m=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem"><span style="font-size:0.78rem">${m}</span>${typeof videoBtnHTML==='function'?videoBtnHTML(m):''}</div>`).join('')}</div></div></div></div>${sectionsHTML}${(typeof cardioFinisherHTML==='function'?cardioFinisherHTML(wo):'')}${(typeof sportSAPHTML==='function'?sportSAPHTML(wo):'')}${(typeof sportSCFinisherHTML==='function'?sportSCFinisherHTML(wo):'')}${(typeof sportConditioningCardHTML==='function'?sportConditioningCardHTML(wo):'')}${renderWorkoutCompleteSection(wo,woNum)}</div>`;
   // Workout clock + rest timer (only for workouts with timing/rest prescriptions).
   try{
     if(typeof workoutClockBarHTML==='function'){
@@ -17799,6 +17829,37 @@ function renderWorkoutDetail(wo,container,opts){
 }
 
 // ── Workout completion + "how did it feel" feedback ───────────────────────
+// Builds the sport & conditioning card: periodized conditioning, decel/landing work,
+// sport emphasis, and the practice/game load logger. Only shows the parts that apply.
+function sportConditioningCardHTML(wo){
+  try{
+    var phase=(typeof currentPhase!=='undefined')?currentPhase:'hypertrophy';
+    var cond=(typeof conditioningForPhase==='function')?conditioningForPhase(phase):null;
+    var decel=(typeof decelLandingWork==='function')?decelLandingWork():null;
+    var emph=(typeof sportEmphasis==='function')?sportEmphasis():null;
+    var loggedToday=(typeof sportLoggedToday==='function') && sportLoggedToday();
+    var sportLoadNote='';
+    try{ var wk=(typeof recentSportLoad==='function')?recentSportLoad(7):0; if(wk>1){ var cut=Math.round((1-(typeof sportLoadMult==='function'?sportLoadMult():1))*100); if(cut>0) sportLoadNote='Weight-room load is auto-reduced ~'+cut+'% this week to keep you fresh for your sport.'; } }catch(e){}
+    var rows='';
+    if(cond){ rows+='<div style="margin-bottom:0.6rem"><div style="font-size:0.7rem;font-weight:800;color:var(--accent)">\\ud83c\\udfc3 Conditioning \\u2014 '+cond.system+'</div><div style="font-size:0.76rem;color:var(--text)">'+cond.rx+'</div></div>'; }
+    if(decel){ rows+='<div style="margin-bottom:0.6rem"><div style="font-size:0.7rem;font-weight:800;color:var(--accent)">\\ud83e\\uddb5 Landing & Deceleration \\u2014 '+decel.tier+'</div><div style="font-size:0.76rem;color:var(--text)">'+decel.rx+'</div></div>'; }
+    if(emph){ rows+='<div style="margin-bottom:0.6rem"><div style="font-size:0.7rem;font-weight:800;color:var(--accent)">\\ud83c\\udfaf Sport Emphasis</div><div style="font-size:0.76rem;color:var(--text)">Focus: '+emph.focus+'<br>Weave in: '+emph.keyLift+'</div></div>'; }
+    // Sport-load logger
+    var logger='<div style="margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid var(--border)">'
+      +'<div style="font-size:0.68rem;font-weight:800;color:var(--muted);margin-bottom:0.35rem">LOG TODAY\\u2019S SPORT (so lifting adjusts around it)</div>'
+      +(loggedToday?'<div style="font-size:0.74rem;color:var(--green,#2d7a5f);font-weight:700">\\u2705 Sport session logged today</div>':
+        '<div style="display:flex;gap:0.3rem;flex-wrap:wrap">'
+        +'<button onclick="logSportSession(&quot;practice&quot;,&quot;moderate&quot;)" class="btn btn-outline" style="flex:1;min-width:30%;font-size:0.66rem;padding:0.3rem">Practice</button>'
+        +'<button onclick="logSportSession(&quot;practice&quot;,&quot;hard&quot;)" class="btn btn-outline" style="flex:1;min-width:30%;font-size:0.66rem;padding:0.3rem">Hard practice</button>'
+        +'<button onclick="logSportSession(&quot;game&quot;,&quot;hard&quot;)" class="btn btn-outline" style="flex:1;min-width:30%;font-size:0.66rem;padding:0.3rem">Game</button>'
+        +'</div>')
+      +(sportLoadNote?'<div style="font-size:0.66rem;color:var(--muted);margin-top:0.35rem;font-style:italic">'+sportLoadNote+'</div>':'')
+      +'</div>';
+    if(!rows && !logger) return '';
+    return '<div class="card" style="margin-bottom:0.75rem"><div style="font-size:0.68rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:0.6rem">\\u26a1 Sport & Conditioning</div>'+rows+logger+'</div>';
+  }catch(e){ return ''; }
+}
+
 function renderWorkoutCompleteSection(wo, woNum){
   const todayKey = new Date().toDateString();
   const completed = JSON.parse(localStorage.getItem('ffp_completed_workouts')||'[]');
@@ -17830,6 +17891,7 @@ function renderWorkoutCompleteSection(wo, woNum){
             +'<button onclick="toggleLiftMiss(this,\''+safe+'\')" style="padding:0.2rem 0.6rem;font-size:0.68rem;font-weight:700;border-radius:7px;border:1.5px solid var(--border);background:none;color:var(--accent);cursor:pointer">\u2713 Hit reps</button>'
             +'</div>'
             +'<div style="display:flex;gap:0.3rem">'+pill('light','\u2193 Too light')+pill('right','\u2713 Just right')+pill('heavy','\u2191 Too heavy')+'</div>'
+            +((typeof vbtEnabled==='function' && vbtEnabled())?('<div style="font-size:0.6rem;font-weight:800;letter-spacing:0.5px;text-transform:uppercase;color:var(--muted);margin:0.35rem 0 0.2rem">Bar speed</div><div style="display:flex;gap:0.3rem">'+['fast','moderate','grind','miss'].map(function(rt){var lbl={fast:'Fast',moderate:'Moderate',grind:'Grind',miss:'Miss'}[rt];return '<button onclick="_vbtTap(this,&quot;'+safe+'&quot;,&quot;'+rt+'&quot;)" style="flex:1;padding:0.28rem 0.1rem;font-size:0.62rem;font-weight:700;border-radius:7px;cursor:pointer;border:1.5px solid var(--border);background:none;color:var(--muted)">'+lbl+'</button>';}).join('')+'</div>'):'')
             +'</div>'; }).join('');
         var anchor=(typeof amrapAnchorLift==='function')?amrapAnchorLift(wo):null;
         var amrapBlock = anchor ? (
@@ -17844,7 +17906,8 @@ function renderWorkoutCompleteSection(wo, woNum){
           + '<div id="amrap-result" style="font-size:0.66rem;color:var(--accent);margin-top:0.35rem;min-height:0.9rem"></div>'
           + '</div>'
         ) : '';
-        return header+rows+amrapBlock; })()}
+        var vbtToggle = '<div style="margin-top:0.4rem;text-align:center"><button onclick="_toggleVbt()" style="font-size:0.62rem;color:var(--muted);background:none;border:none;text-decoration:underline;cursor:pointer">'+((typeof vbtEnabled==='function'&&vbtEnabled())?'Bar-speed (VBT) tracking: ON — tap to turn off':'Enable bar-speed (VBT) tracking')+'</button></div>';
+        return header+rows+amrapBlock+vbtToggle; })()}
       <button onclick="completeWorkout('${wo.type}',${woNum},'perlift')" class="btn btn-primary" style="width:100%;padding:0.6rem;font-size:0.82rem;font-weight:800;margin-top:0.3rem">Save & finish \u2713</button>
     </div>
     <button onclick="document.getElementById('feel-prompt').style.display='block';this.style.display='none'" class="btn" style="width:100%;padding:0.9rem;font-size:0.95rem">✅ Finish Workout</button>
@@ -18232,6 +18295,134 @@ function modeWindowOffset(mode, rawOffset){
 // athlete doesn't resume too heavy. Under 2 weeks off → no loss (normal rest);
 // then ~3% of the accumulated offset per extra week, capped at 50% (muscle memory
 // means a long layoff never wipes everything).
+// ── PER-SPORT EXERCISE EMPHASIS ──────────────────────────────────────────────
+// Elite programs differentiate exercise SELECTION by sport, not just load. A
+// volleyball player, a sprinter, and a lineman need different emphases. This returns
+// the sport-specific accessory emphasis + a key supplemental lift to weave in, so the
+// program speaks to the athlete's actual demands. Matched from the sport name.
+var _SPORT_EMPHASIS = {
+  volleyball:  { focus:'vertical jump, shoulder health, landing control', keyLift:'Hang Power Clean + overhead stability (SA press, band pull-apart)' },
+  basketball:  { focus:'repeat jump, deceleration, lateral power', keyLift:'Trap-bar jump + lateral bound' },
+  football:    { focus:'acceleration, collision strength, hip power', keyLift:'Power Clean + heavy sled push' },
+  sprint:      { focus:'horizontal force, posterior chain, stiffness', keyLift:'Hip thrust + sprint bounds' },
+  sprints:     { focus:'horizontal force, posterior chain, stiffness', keyLift:'Hip thrust + sprint bounds' },
+  soccer:      { focus:'repeat sprint, single-leg strength, groin/adductor health', keyLift:'Bulgarian split squat + Copenhagen plank' },
+  baseball:    { focus:'rotational power, shoulder/elbow care, hip-shoulder separation', keyLift:'Rotational MB throw + band external rotation' },
+  tennis:      { focus:'rotational power, lateral movement, shoulder health', keyLift:'Rotational MB throw + lateral lunge' },
+  hockey:      { focus:'lateral power, hip strength, rotational core', keyLift:'Lateral bound + hip-dominant work' },
+  swimming:    { focus:'shoulder durability, posterior chain, core anti-rotation', keyLift:'Pull-ups + Pallof press' },
+  distance:    { focus:'single-leg durability, running economy, posterior chain', keyLift:'Single-leg RDL + calf/foot work' },
+  wrestling:   { focus:'grip, isometric strength, neck, rotational power', keyLift:'Heavy carries + neck work' },
+  mma:         { focus:'rotational & explosive power, grip, anaerobic capacity', keyLift:'Rotational throws + heavy carries' }
+};
+function sportEmphasis(){
+  try{
+    var sport=((profile.competitiveSport||profile.recreationalSport||'')+'').toLowerCase();
+    if(!sport) return null;
+    for(var k in _SPORT_EMPHASIS){ if(sport.indexOf(k)>=0) return _SPORT_EMPHASIS[k]; }
+    return null;
+  }catch(e){ return null; }
+}
+
+// ── DECELERATION / LANDING / ACL-PREVENTION ──────────────────────────────────
+// Jumping & cutting athletes get hurt landing and decelerating, not accelerating.
+// Elite programs progress ECCENTRIC/landing mechanics and change-of-direction before
+// piling on reactive plyos. This returns the right landing/decel work for the
+// athlete's experience level — and it matters most for jump/court/field athletes.
+// Progression: teach landing → absorb force → control deceleration → reactive cutting.
+function decelLandingWork(){
+  try{
+    var jump = (typeof isJumpCourtAthlete==='function') && isJumpCourtAthlete();
+    var role = (typeof sportLiftRole==='function') ? sportLiftRole() : 'general';
+    var fieldCourt = jump || role==='power-support';
+    if(!fieldCourt) return null; // only prescribed for athletes who cut/land/jump
+    var exp=((typeof profile!=='undefined' && profile.experience)||'intermediate').toLowerCase();
+    if(exp==='beginner' || exp==='novice'){
+      return { tier:'Teach landing', rx:'Box drop-and-stick: 3 × 5 · step off a low box, land soft (hips back, knees tracking toes), hold 2s. Master the landing before adding bounce.' };
+    }
+    if(exp==='advanced'){
+      return { tier:'Reactive control', rx:'Single-leg bound-and-stick + cutting: 3 × 4/side · land and stabilize on one leg, then a controlled 45° cut. Builds the deceleration & change-of-direction that prevents ACL injury.' };
+    }
+    return { tier:'Absorb & decelerate', rx:'Depth drop to stick + deceleration runs: 3 × 5 · land and freeze, then 4 × 20m build-up to a controlled stop. Trains force absorption and braking.' };
+  }catch(e){ return null; }
+}
+
+// ── PERIODIZED CONDITIONING / ENERGY-SYSTEM DEVELOPMENT ──────────────────────
+// Elite S&C periodizes conditioning the way it periodizes lifting: build an aerobic
+// base early, shift to tempo/threshold mid-cycle, then sport-specific repeat-sprint/
+// anaerobic power near competition. This returns the right energy-system session for
+// the current phase + athlete type, so conditioning tracks the plan instead of being
+// random cardio. Jump/court & sprint athletes skew anaerobic; endurance athletes aerobic.
+function conditioningForPhase(phaseKey){
+  try{
+    var athlete=(typeof getAthleteType==='function')?getAthleteType():'endurance';
+    var power = athlete==='power';
+    var byPhase = {
+      endurance:   { system:'Aerobic base', rx: power ? 'Tempo runs: 6–8 × 100m @ 70%, walk back · builds the aerobic engine without dulling speed'
+                                                        : 'Zone 2 steady: 25–35 min @ conversational pace · aerobic base' },
+      hypertrophy: { system:'Aerobic + tempo', rx: power ? 'Tempo intervals: 8–10 × 100m @ 75%, 60s rest · capacity without fatigue cost'
+                                                          : 'Zone 2: 20–30 min, or 6 × 3 min @ threshold / 90s easy' },
+      strength:    { system:'Alactic power maintenance', rx: 'Short sprints: 6 × 20–30m @ 95%, full recovery (2–3 min) · keeps speed sharp, low fatigue' },
+      power:       { system:'Repeat-sprint / anaerobic power', rx: power ? 'Repeat sprints: 8–10 × 30–40m @ 100%, 45–60s rest · sport-specific power endurance'
+                                                                        : 'VO2 intervals: 5–6 × 2 min hard / 2 min easy' },
+      maxassess:   { system:'Minimal', rx: 'Light movement only — keep fresh for testing' },
+      precomp:     { system:'Sport-specific sharpening', rx: 'Short, crisp sport-speed work: 4–6 × 20m @ 100%, full rest · peak speed, minimal volume' },
+      competition: { system:'Taper', rx: 'Activation only — a few short accelerations to stay sharp' },
+      recovery:    { system:'Regeneration', rx: 'Easy 15–20 min Zone 1 flush + mobility' }
+    };
+    return byPhase[phaseKey] || byPhase.hypertrophy;
+  }catch(e){ return { system:'Conditioning', rx:'20–30 min moderate aerobic work' }; }
+}
+
+// ── PRACTICE / GAME LOAD MANAGEMENT ──────────────────────────────────────────
+// For in-season athletes, the weight room must bend around their SPORT load, not
+// bury them. The athlete logs practice/game sessions (with an intensity), and the
+// engine reduces weight-room load when recent sport load is high — so lifting
+// complements the sport instead of competing with it. This is how elite collegiate
+// & pro S&C manages in-season training.
+function logSportSession(kind, intensity){
+  try{
+    var log=JSON.parse(localStorage.getItem('ffp_sport_load')||'[]');
+    // kind: 'practice' | 'game'; intensity: 'light'|'moderate'|'hard'
+    var load = (kind==='game'?1.3:1.0) * ({light:0.5,moderate:1.0,hard:1.5}[intensity]||1.0);
+    log.push({ date:new Date().toISOString(), dateKey:(typeof _todayKey==='function'?_todayKey():new Date().toISOString().slice(0,10)), kind:kind, intensity:intensity, load:load });
+    if(log.length>60) log=log.slice(-60);
+    localStorage.setItem('ffp_sport_load', JSON.stringify(log));
+    try{ if(typeof renderHomePage==='function') renderHomePage(); }catch(e){}
+    try{ if(typeof updateWorkoutsPage==='function') updateWorkoutsPage(); }catch(e){}
+  }catch(e){}
+}
+// Accumulated sport load over the last N days (default 7).
+function recentSportLoad(days){
+  try{
+    days=days||7;
+    var log=JSON.parse(localStorage.getItem('ffp_sport_load')||'[]');
+    var cutoff=Date.now()-days*24*3600*1000;
+    return log.filter(function(s){ return new Date(s.date).getTime()>=cutoff; })
+              .reduce(function(a,s){ return a+(s.load||0); },0);
+  }catch(e){ return 0; }
+}
+// Load-management multiplier for the weight room, from recent sport load. A heavy
+// sport week pulls barbell load down so the athlete stays fresh for their sport;
+// a light sport week leaves lifting at full. Bounded so it never over-cuts.
+function sportLoadMult(){
+  try{
+    var wk=recentSportLoad(7);
+    // ~2 hard practices + a game ≈ 4.0+. Scale: 0 load → 1.0 (no cut); 6+ → 0.80 (−20%).
+    if(wk<=1) return 1.0;
+    var cut=Math.min(0.20, (wk-1)*0.04);  // 4%/load-unit over 1, capped at 20%
+    return 1.0 - cut;
+  }catch(e){ return 1.0; }
+}
+// Did the athlete log a sport session today? (for UI state)
+function sportLoggedToday(){
+  try{
+    var log=JSON.parse(localStorage.getItem('ffp_sport_load')||'[]');
+    var tk=(typeof _todayKey==='function')?_todayKey():new Date().toISOString().slice(0,10);
+    return log.some(function(s){ return (s.dateKey||(''+s.date).slice(0,10))===tk; });
+  }catch(e){ return false; }
+}
+
 function layoffDecayFactor(daysSinceLast){
   if(daysSinceLast==null || daysSinceLast<14) return 1.0;
   const extraWeeks=(daysSinceLast-14)/7;
@@ -18283,8 +18474,12 @@ function liftProgressionAdjust(exName){
       const sig=liftLoadSignal(exName, 4);   // + light, - heavy
       loadAdj = Math.max(-0.03, Math.min(0.03, sig*0.03));
     }
-    // Combine, bounded so one lift never swings more than ±5% from the mode.
-    return Math.max(-0.05, Math.min(0.05, hrAdj + loadAdj));
+    // Part 3 (OPTIONAL): VBT. Only contributes when the athlete has turned VBT on;
+    // otherwise it's 0 and the existing autoregulation is unchanged.
+    let vbtAdj=0;
+    if(typeof vbtLiftAdjust==='function'){ vbtAdj=vbtLiftAdjust(exName); }
+    // Combine, bounded so one lift never swings more than ±6% from the mode.
+    return Math.max(-0.06, Math.min(0.06, hrAdj + loadAdj + vbtAdj));
   }catch(e){ return 0; }
 }
 
@@ -18326,6 +18521,84 @@ function progressionIndicatorHTML(mode){
 
 // Autoregulation: size the next step-up from how the just-completed set FELT.
 // easy=+1, right=0, brutal=-1; average readiness maps to a 0–4% step.
+// ── VELOCITY-BASED TRAINING (optional layer, device-ready) ───────────────────
+// VBT autoregulates load by how FAST the bar moves. True VBT needs a sensor/camera
+// to measure bar speed in m/s — not possible in the current web app — so this layer
+// supports (a) SELF-REPORTED bar speed now (a legitimate coaching proxy) and (b) a
+// device-ready path for when the native app connects a VBT device or camera.
+// It is OPT-IN and sits ALONGSIDE the existing autoregulation; when off, nothing
+// changes and the feel/reps/AMRAP system runs exactly as before.
+function vbtEnabled(){ try{ return localStorage.getItem('ffp_vbt_enabled')==='1'; }catch(e){ return false; } }
+function setVbtEnabled(on){ try{ localStorage.setItem('ffp_vbt_enabled', on?'1':'0'); }catch(e){} }
+function _toggleVbt(){ try{ setVbtEnabled(!vbtEnabled()); if(typeof updateWorkoutsPage==="function") updateWorkoutsPage(); }catch(e){} }
+
+
+// Velocity zones (m/s) by training goal — standard VBT ranges. Used when a real
+// bar-speed value is available (device path).
+var _VBT_ZONES = {
+  strength:   {min:0.30, max:0.50, label:'Max Strength'},
+  power:      {min:0.75, max:1.00, label:'Power / Speed-Strength'},
+  speedstr:   {min:0.50, max:0.75, label:'Strength-Speed'},
+  hypertrophy:{min:0.40, max:0.60, label:'Hypertrophy'}
+};
+// Self-reported bar speed → load nudge (the proxy when there's no sensor). Fast bar
+// means there's more in the tank (add load); grinding means at/near the limit (hold
+// or back off). Returns a small +/- % to the lift's next prescription.
+function vbtSelfReportAdjust(rating){
+  switch(rating){
+    case 'fast':     return 0.03;   // bar flew → add load
+    case 'moderate': return 0.00;   // on target → hold
+    case 'grind':    return -0.02;  // grinding → ease off
+    case 'miss':     return -0.05;  // missed/failed → back off
+    default:         return 0.00;
+  }
+}
+// Device path (for later): given a measured bar speed (m/s) and the goal zone,
+// returns whether the athlete is below/in/above the target velocity → load guidance.
+function vbtVelocityAdjust(mps, goal){
+  try{
+    var z=_VBT_ZONES[goal]||_VBT_ZONES.power;
+    if(mps < z.min) return -0.03;   // too slow → load too heavy, reduce
+    if(mps > z.max) return 0.03;    // too fast → load too light, add
+    return 0.0;                     // in the zone → hold
+  }catch(e){ return 0; }
+}
+// Record a per-lift VBT data point (self-report rating now, or a measured mps later).
+function _vbtTap(btn, ex, rating){
+  try{
+    if(typeof recordVbt==='function') recordVbt(ex, rating);
+    // highlight the chosen one, un-highlight siblings
+    var sibs=btn.parentNode.querySelectorAll('button');
+    Array.prototype.forEach.call(sibs,function(b){ b.style.background=''; b.style.color='var(--muted)'; b.style.borderColor='var(--border)'; });
+    btn.style.background='var(--accent)'; btn.style.color='#fff'; btn.style.borderColor='var(--accent)';
+  }catch(e){}
+}
+function recordVbt(exName, rating, mps){
+  if(!exName || !vbtEnabled()) return;
+  try{
+    var log=JSON.parse(localStorage.getItem('ffp_vbt_log')||'{}');
+    if(!Array.isArray(log[exName])) log[exName]=[];
+    log[exName].push({ date:new Date().toISOString(), rating:rating||null, mps:(typeof mps==='number'?mps:null) });
+    if(log[exName].length>24) log[exName]=log[exName].slice(-24);
+    localStorage.setItem('ffp_vbt_log', JSON.stringify(log));
+  }catch(e){}
+}
+// The VBT contribution to a lift's offset — only when VBT is ON. Uses measured mps
+// if present (device), else the latest self-report. Returns 0 when VBT is off, so it
+// NEVER overrides the existing autoregulation unless the athlete opted in.
+function vbtLiftAdjust(exName, goal){
+  try{
+    if(!vbtEnabled() || !exName) return 0;
+    var log=JSON.parse(localStorage.getItem('ffp_vbt_log')||'{}');
+    var arr=(log && Array.isArray(log[exName]))?log[exName]:[];
+    if(!arr.length) return 0;
+    var last=arr[arr.length-1];
+    if(last && typeof last.mps==='number') return vbtVelocityAdjust(last.mps, goal||currentPhase);
+    if(last && last.rating) return vbtSelfReportAdjust(last.rating);
+  }catch(e){}
+  return 0;
+}
+
 function autoregStep(feels){
   if(!feels || !feels.length) return MODE_STEP; // no data → standard +3%
   let score=0;
@@ -18404,7 +18677,9 @@ function getPyramidSets(phaseKey,oneRepMax,isBarbell,phaseWeek,phaseTotal,weeksT
   }
   const _weeksToComp = (typeof weeksToComp==='number') ? weeksToComp
                       : ((typeof weeksUntilCompetition==='function') ? weeksUntilCompetition() : null);
-  const _wkMult = weeklyLoadMult(phaseKey, phaseWeek, phaseTotal, _weeksToComp);
+  let _wkMult = weeklyLoadMult(phaseKey, phaseWeek, phaseTotal, _weeksToComp);
+  // Practice/game load management: reduce weight-room load when recent sport load is high.
+  try{ if(typeof sportLoadMult==='function') _wkMult = _wkMult * sportLoadMult(); }catch(e){}
   // Cross-block progressive overload: shift this mode's whole window up by how
   // many blocks the athlete has completed in it, and drop reps as % climbs.
   const _rawOffset = (typeof getModeOffset==='function') ? getModeOffset(phaseKey) : 0;
